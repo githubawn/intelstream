@@ -37,6 +37,13 @@ class Settings(BaseSettings):
         description="Default polling interval in minutes",
     )
 
+    content_poll_interval_minutes: int = Field(
+        default=5,
+        ge=1,
+        le=60,
+        description="Interval for checking and posting new content",
+    )
+
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = Field(
         default="INFO",
         description="Logging level",
