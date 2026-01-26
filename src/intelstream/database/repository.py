@@ -54,6 +54,11 @@ class Repository:
             result = await session.execute(select(Source).where(Source.id == source_id))
             return result.scalar_one_or_none()
 
+    async def get_source_by_name(self, name: str) -> Source | None:
+        async with self.session() as session:
+            result = await session.execute(select(Source).where(Source.name == name))
+            return result.scalar_one_or_none()
+
     async def get_all_sources(self, active_only: bool = True) -> list[Source]:
         async with self.session() as session:
             query = select(Source)

@@ -32,6 +32,16 @@ class IntelStreamBot(commands.Bot):
         await self.repository.initialize()
         await self.add_cog(CoreCommands(self))
 
+        from intelstream.discord.cogs import (
+            ConfigManagement,
+            ContentPosting,
+            SourceManagement,
+        )
+
+        await self.add_cog(SourceManagement(self))
+        await self.add_cog(ConfigManagement(self))
+        await self.add_cog(ContentPosting(self))
+
         guild = discord.Object(id=self.settings.discord_guild_id)
         self.tree.copy_global_to(guild=guild)
         await self.tree.sync(guild=guild)
