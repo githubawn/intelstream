@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 import pytest
 
@@ -130,7 +130,7 @@ class TestContentItemOperations:
             title="Test Video",
             original_url="https://youtube.com/watch?v=video123",
             author="Test Creator",
-            published_at=datetime.utcnow(),
+            published_at=datetime.now(UTC),
         )
 
         assert await repository.content_item_exists("video123") is True
@@ -149,7 +149,7 @@ class TestContentItemOperations:
             title="Blog Post",
             original_url="https://blog.example.com/post-1",
             author="Blogger",
-            published_at=datetime.utcnow(),
+            published_at=datetime.now(UTC),
             raw_content="Blog content here.",
         )
 
