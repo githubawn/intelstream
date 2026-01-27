@@ -227,7 +227,7 @@ class Summarize(commands.Cog):
         items = await adapter.fetch_latest(parsed.netloc)
 
         for item in items:
-            if item.original_url == url or url in item.original_url:
+            if item.original_url == url or url in item.original_url or item.original_url in url:
                 return WebContent(
                     url=item.original_url,
                     title=item.title,
