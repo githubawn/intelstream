@@ -1,4 +1,3 @@
-from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import discord
@@ -11,60 +10,53 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger()
 
-SOURCE_TYPE_COLORS: dict[SourceType, discord.Color] = {
-    SourceType.SUBSTACK: discord.Color.from_rgb(255, 103, 25),
-    SourceType.YOUTUBE: discord.Color.red(),
-    SourceType.RSS: discord.Color.blue(),
-}
-
-SOURCE_TYPE_ICONS: dict[SourceType, str] = {
+SOURCE_TYPE_LABELS: dict[SourceType, str] = {
     SourceType.SUBSTACK: "Substack",
     SourceType.YOUTUBE: "YouTube",
-    SourceType.RSS: "RSS Feed",
+    SourceType.RSS: "RSS",
+    SourceType.PAGE: "Web",
 }
 
-MAX_EMBED_DESCRIPTION = 4096
-MAX_EMBED_TITLE = 256
+MAX_MESSAGE_LENGTH = 2000
 
 
 class ContentPoster:
     def __init__(self, bot: "IntelStreamBot") -> None:
         self._bot = bot
 
-    def create_embed(
+    def format_message(
         self,
         content_item: ContentItem,
         source_type: SourceType,
         source_name: str,
-    ) -> discord.Embed:
-        title = content_item.title
-        if len(title) > MAX_EMBED_TITLE:
-            title = title[: MAX_EMBED_TITLE - 3] + "..."
-
-        description = content_item.summary or "No summary available."
-        if len(description) > MAX_EMBED_DESCRIPTION:
-            description = description[: MAX_EMBED_DESCRIPTION - 3] + "..."
-
-        color = SOURCE_TYPE_COLORS.get(source_type, discord.Color.greyple())
-
-        embed = discord.Embed(
-            title=title,
-            url=content_item.original_url,
-            description=description,
-            color=color,
-            timestamp=content_item.published_at or datetime.now(UTC),
-        )
+    ) -> str:
+        parts = []
 
         if content_item.author:
-            embed.set_author(name=content_item.author)
+            parts.append(f"**{content_item.author}**")
 
-        if content_item.thumbnail_url:
-            embed.set_image(url=content_item.thumbnail_url)
+        title = content_item.title
+        if content_item.original_url:
+            parts.append(f"[{title}]({content_item.original_url})")
+        else:
+            parts.append(f"**{title}**")
 
-        source_icon = SOURCE_TYPE_ICONS.get(source_type, "Unknown")
-        embed.set_footer(text=f"{source_icon} | {source_name}")
+        parts.append("")
 
-        return embed
+        summary = content_item.summary or "No summary available."
+        parts.append(summary)
+
+        source_label = SOURCE_TYPE_LABELS.get(source_type, "Unknown")
+        parts.append("")
+        parts.append(f"*{source_label} | {source_name}*")
+
+        message = "\n".join(parts)
+
+        if len(message) > MAX_MESSAGE_LENGTH:
+            truncate_at = MAX_MESSAGE_LENGTH - 50
+            message = message[:truncate_at] + "...\n\n*[Message truncated]*"
+
+        return message
 
     async def post_content(
         self,
@@ -73,8 +65,8 @@ class ContentPoster:
         source_type: SourceType,
         source_name: str,
     ) -> discord.Message:
-        embed = self.create_embed(content_item, source_type, source_name)
-        message = await channel.send(embed=embed)
+        content = self.format_message(content_item, source_type, source_name)
+        message = await channel.send(content=content)
 
         logger.info(
             "Posted content to Discord",
