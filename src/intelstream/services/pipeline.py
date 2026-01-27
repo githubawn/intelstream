@@ -164,7 +164,13 @@ class ContentPipeline:
 
         for item in items:
             if not item.raw_content:
-                logger.debug("Skipping item without raw content", item_id=item.id)
+                await self._repository.update_content_item_summary(item.id, "")
+                summarized_count += 1
+                logger.debug(
+                    "Item has no content, marked ready for posting",
+                    item_id=item.id,
+                    title=item.title,
+                )
                 continue
 
             try:

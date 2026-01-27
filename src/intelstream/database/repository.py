@@ -149,7 +149,6 @@ class Repository:
             result = await session.execute(
                 select(ContentItem)
                 .where(ContentItem.summary.is_(None))
-                .where(ContentItem.raw_content.isnot(None))
                 .order_by(ContentItem.created_at.asc())
                 .limit(limit)
             )
