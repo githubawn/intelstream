@@ -164,6 +164,12 @@ class ContentPoster:
             logger.debug("No unposted content items to post")
             return 0
 
+        items = await self._filter_first_posting_items(items)
+
+        if not items:
+            logger.debug("No items to post after first-posting filter")
+            return 0
+
         posted_count = 0
 
         for item in items:
@@ -202,3 +208,37 @@ class ContentPoster:
 
         logger.info("Posted unposted items", count=posted_count, guild_id=guild_id)
         return posted_count
+
+    async def _filter_first_posting_items(
+        self, items: list[ContentItem]
+    ) -> list[ContentItem]:
+        items_by_source: dict[str, list[ContentItem]] = {}
+        for item in items:
+            if item.source_id not in items_by_source:
+                items_by_source[item.source_id] = []
+            items_by_source[item.source_id].append(item)
+
+        filtered_items: list[ContentItem] = []
+
+        for source_id, source_items in items_by_source.items():
+            has_posted = await self._bot.repository.has_source_posted_content(source_id)
+
+            if has_posted:
+                filtered_items.extend(source_items)
+            else:
+                most_recent = max(source_items, key=lambda x: x.published_at)
+                filtered_items.append(most_recent)
+
+                for item in source_items:
+                    if item.id != most_recent.id:
+                        await self._bot.repository.mark_content_item_posted(
+                            content_id=item.id,
+                            discord_message_id="backfilled",
+                        )
+                        logger.debug(
+                            "Backfilled item during posting",
+                            item_id=item.id,
+                            title=item.title,
+                        )
+
+        return filtered_items
