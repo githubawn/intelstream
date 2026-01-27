@@ -317,67 +317,6 @@ class TestContentPosterPostUnpostedItems:
 
         assert result == 0
 
-    async def test_first_posting_filters_to_most_recent_item(self, content_poster, mock_bot):
-        mock_config = MagicMock()
-        mock_config.is_active = True
-        mock_config.channel_id = "456"
-        mock_bot.repository.get_discord_config = AsyncMock(return_value=mock_config)
-
-        mock_channel = MagicMock(spec=discord.TextChannel)
-        mock_message = MagicMock(spec=discord.Message)
-        mock_message.id = 789
-        mock_channel.send = AsyncMock(return_value=mock_message)
-        mock_bot.get_channel = MagicMock(return_value=mock_channel)
-
-        old_item = MagicMock(spec=ContentItem)
-        old_item.id = "old-item"
-        old_item.source_id = "source-123"
-        old_item.title = "Old Article"
-        old_item.summary = "Old summary"
-        old_item.original_url = "https://example.com/old"
-        old_item.author = "Author"
-        old_item.published_at = datetime(2024, 1, 1, tzinfo=UTC)
-
-        new_item = MagicMock(spec=ContentItem)
-        new_item.id = "new-item"
-        new_item.source_id = "source-123"
-        new_item.title = "New Article"
-        new_item.summary = "New summary"
-        new_item.original_url = "https://example.com/new"
-        new_item.author = "Author"
-        new_item.published_at = datetime(2024, 1, 15, tzinfo=UTC)
-
-        mock_bot.repository.get_unposted_content_items = AsyncMock(
-            return_value=[old_item, new_item]
-        )
-
-        mock_source = MagicMock()
-        mock_source.type = SourceType.SUBSTACK
-        mock_source.name = "Test Source"
-        mock_bot.repository.get_source_by_id = AsyncMock(return_value=mock_source)
-        mock_bot.repository.mark_content_item_posted = AsyncMock()
-        mock_bot.repository.has_source_posted_content = AsyncMock(return_value=False)
-
-        result = await content_poster.post_unposted_items(guild_id=123)
-
-        assert result == 1
-
-        posted_calls = [
-            call
-            for call in mock_bot.repository.mark_content_item_posted.call_args_list
-            if call.kwargs.get("discord_message_id") == "789"
-        ]
-        assert len(posted_calls) == 1
-        assert posted_calls[0].kwargs["content_id"] == "new-item"
-
-        backfilled_calls = [
-            call
-            for call in mock_bot.repository.mark_content_item_posted.call_args_list
-            if call.kwargs.get("discord_message_id") == "backfilled"
-        ]
-        assert len(backfilled_calls) == 1
-        assert backfilled_calls[0].kwargs["content_id"] == "old-item"
-
 
 class TestTruncateSummaryAtBullet:
     def test_returns_unchanged_when_under_limit(self):

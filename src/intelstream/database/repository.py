@@ -183,6 +183,7 @@ class Repository:
                 select(ContentItem)
                 .where(ContentItem.source_id == source_id)
                 .where(ContentItem.posted_to_discord == False)  # noqa: E712
+                .where(ContentItem.summary.is_(None))
             )
             if exclude_item_id:
                 query = query.where(ContentItem.id != exclude_item_id)

@@ -333,6 +333,47 @@ class TestFirstPostingOperations:
         assert item3 is not None
         assert item3.posted_to_discord is False
 
+    async def test_mark_items_as_backfilled_skips_summarized_items(
+        self, repository: Repository
+    ) -> None:
+        source = await repository.add_source(
+            source_type=SourceType.ARXIV,
+            name="Test",
+            identifier="test",
+        )
+
+        unsummarized = await repository.add_content_item(
+            source_id=source.id,
+            external_id="unsummarized",
+            title="Unsummarized",
+            original_url="https://example.com/1",
+            author="Author",
+            published_at=datetime(2024, 1, 1),
+        )
+
+        summarized = await repository.add_content_item(
+            source_id=source.id,
+            external_id="summarized",
+            title="Summarized",
+            original_url="https://example.com/2",
+            author="Author",
+            published_at=datetime(2024, 1, 2),
+        )
+        await repository.update_content_item_summary(summarized.id, "This has a summary")
+
+        backfilled_count = await repository.mark_items_as_backfilled(source_id=source.id)
+
+        assert backfilled_count == 1
+
+        item1 = await repository.get_content_item_by_external_id("unsummarized")
+        assert item1 is not None
+        assert item1.posted_to_discord is True
+        assert item1.discord_message_id == "backfilled"
+
+        item2 = await repository.get_content_item_by_external_id("summarized")
+        assert item2 is not None
+        assert item2.posted_to_discord is False
+
     async def test_mark_items_as_backfilled_excludes_already_posted(
         self, repository: Repository
     ) -> None:
