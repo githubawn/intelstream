@@ -325,7 +325,7 @@ class TestSummarizePending:
         assert result == 0
         mock_repository.get_unsummarized_content_items.assert_not_called()
 
-    async def test_summarize_pending_skips_items_without_content(
+    async def test_summarize_pending_marks_items_without_content_ready_for_posting(
         self,
         pipeline: ContentPipeline,
         mock_repository: AsyncMock,
@@ -343,8 +343,9 @@ class TestSummarizePending:
 
         result = await pipeline.summarize_pending()
 
-        assert result == 0
+        assert result == 1
         mock_summarizer.summarize.assert_not_called()
+        mock_repository.update_content_item_summary.assert_called_once_with("item-456", "")
 
         await pipeline.close()
 
