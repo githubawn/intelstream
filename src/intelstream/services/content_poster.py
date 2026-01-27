@@ -108,8 +108,11 @@ class ContentPoster:
                 length=len(message),
                 max_length=self._max_message_length,
             )
+            if summary.endswith(TRUNCATION_NOTICE):
+                summary = summary[: -len(TRUNCATION_NOTICE)]
             excess = len(message) - self._max_message_length + len(TRUNCATION_NOTICE)
-            message = message[:-excess] + TRUNCATION_NOTICE
+            summary = summary[:-excess] + TRUNCATION_NOTICE
+            message = header + summary + footer
 
         return message
 
