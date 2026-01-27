@@ -6,10 +6,8 @@ import pytest
 
 from intelstream.database.models import ContentItem, SourceType
 from intelstream.services.content_poster import (
-    MAX_EMBED_DESCRIPTION,
-    MAX_EMBED_TITLE,
-    SOURCE_TYPE_COLORS,
-    SOURCE_TYPE_ICONS,
+    MAX_MESSAGE_LENGTH,
+    SOURCE_TYPE_LABELS,
     ContentPoster,
 )
 
@@ -40,139 +38,118 @@ def sample_content_item():
     return item
 
 
-class TestContentPosterCreateEmbed:
-    def test_create_embed_basic(self, content_poster, sample_content_item):
-        embed = content_poster.create_embed(
+class TestContentPosterFormatMessage:
+    def test_format_message_basic(self, content_poster, sample_content_item):
+        message = content_poster.format_message(
             content_item=sample_content_item,
             source_type=SourceType.SUBSTACK,
             source_name="Test Substack",
         )
 
-        assert isinstance(embed, discord.Embed)
-        assert embed.title == sample_content_item.title
-        assert embed.url == sample_content_item.original_url
-        assert embed.description == sample_content_item.summary
-        assert embed.color == SOURCE_TYPE_COLORS[SourceType.SUBSTACK]
+        assert isinstance(message, str)
+        assert sample_content_item.title in message
+        assert sample_content_item.summary in message
+        assert sample_content_item.author in message
 
-    def test_create_embed_truncates_long_title(self, content_poster, sample_content_item):
-        sample_content_item.title = "A" * (MAX_EMBED_TITLE + 100)
-
-        embed = content_poster.create_embed(
+    def test_format_message_includes_author_bold(self, content_poster, sample_content_item):
+        message = content_poster.format_message(
             content_item=sample_content_item,
-            source_type=SourceType.RSS,
-            source_name="Test RSS",
+            source_type=SourceType.SUBSTACK,
+            source_name="Test Substack",
         )
 
-        assert len(embed.title) == MAX_EMBED_TITLE
-        assert embed.title.endswith("...")
+        assert f"**{sample_content_item.author}**" in message
 
-    def test_create_embed_truncates_long_description(self, content_poster, sample_content_item):
-        sample_content_item.summary = "A" * (MAX_EMBED_DESCRIPTION + 100)
-
-        embed = content_poster.create_embed(
+    def test_format_message_includes_title_as_link(self, content_poster, sample_content_item):
+        message = content_poster.format_message(
             content_item=sample_content_item,
-            source_type=SourceType.RSS,
-            source_name="Test RSS",
+            source_type=SourceType.SUBSTACK,
+            source_name="Test Substack",
         )
 
-        assert len(embed.description) == MAX_EMBED_DESCRIPTION
-        assert embed.description.endswith("...")
+        expected_link = f"[{sample_content_item.title}]({sample_content_item.original_url})"
+        assert expected_link in message
 
-    def test_create_embed_without_summary(self, content_poster, sample_content_item):
+    def test_format_message_title_bold_when_no_url(self, content_poster, sample_content_item):
+        sample_content_item.original_url = None
+
+        message = content_poster.format_message(
+            content_item=sample_content_item,
+            source_type=SourceType.SUBSTACK,
+            source_name="Test Substack",
+        )
+
+        assert f"**{sample_content_item.title}**" in message
+
+    def test_format_message_without_summary(self, content_poster, sample_content_item):
         sample_content_item.summary = None
 
-        embed = content_poster.create_embed(
+        message = content_poster.format_message(
             content_item=sample_content_item,
             source_type=SourceType.SUBSTACK,
             source_name="Test Substack",
         )
 
-        assert embed.description == "No summary available."
+        assert "No summary available." in message
 
-    def test_create_embed_sets_author(self, content_poster, sample_content_item):
-        embed = content_poster.create_embed(
-            content_item=sample_content_item,
-            source_type=SourceType.SUBSTACK,
-            source_name="Test Substack",
-        )
-
-        assert embed.author.name == sample_content_item.author
-
-    def test_create_embed_without_author(self, content_poster, sample_content_item):
+    def test_format_message_without_author(self, content_poster, sample_content_item):
         sample_content_item.author = None
 
-        embed = content_poster.create_embed(
+        message = content_poster.format_message(
             content_item=sample_content_item,
             source_type=SourceType.SUBSTACK,
             source_name="Test Substack",
         )
 
-        assert embed.author.name is None
+        assert "**None**" not in message
+        assert sample_content_item.title in message
 
-    def test_create_embed_sets_thumbnail(self, content_poster, sample_content_item):
-        embed = content_poster.create_embed(
-            content_item=sample_content_item,
-            source_type=SourceType.YOUTUBE,
-            source_name="Test YouTube",
-        )
-
-        assert embed.image.url == sample_content_item.thumbnail_url
-
-    def test_create_embed_without_thumbnail(self, content_poster, sample_content_item):
-        sample_content_item.thumbnail_url = None
-
-        embed = content_poster.create_embed(
-            content_item=sample_content_item,
-            source_type=SourceType.YOUTUBE,
-            source_name="Test YouTube",
-        )
-
-        assert embed.image.url is None
-
-    def test_create_embed_sets_footer(self, content_poster, sample_content_item):
-        embed = content_poster.create_embed(
+    def test_format_message_includes_source_footer(self, content_poster, sample_content_item):
+        message = content_poster.format_message(
             content_item=sample_content_item,
             source_type=SourceType.SUBSTACK,
             source_name="My Newsletter",
         )
 
-        expected_footer = f"{SOURCE_TYPE_ICONS[SourceType.SUBSTACK]} | My Newsletter"
-        assert embed.footer.text == expected_footer
+        expected_footer = f"*{SOURCE_TYPE_LABELS[SourceType.SUBSTACK]} | My Newsletter*"
+        assert expected_footer in message
 
-    def test_create_embed_colors_by_source_type(self, content_poster, sample_content_item):
-        for source_type, expected_color in SOURCE_TYPE_COLORS.items():
-            embed = content_poster.create_embed(
+    def test_format_message_source_labels_by_type(self, content_poster, sample_content_item):
+        for source_type, expected_label in SOURCE_TYPE_LABELS.items():
+            message = content_poster.format_message(
                 content_item=sample_content_item,
                 source_type=source_type,
                 source_name="Test",
             )
-            assert embed.color == expected_color
+            assert f"*{expected_label} | Test*" in message
 
-    def test_create_embed_uses_published_at_timestamp(self, content_poster, sample_content_item):
-        embed = content_poster.create_embed(
+    def test_format_message_truncates_long_content(self, content_poster, sample_content_item):
+        sample_content_item.summary = "A" * (MAX_MESSAGE_LENGTH + 500)
+
+        message = content_poster.format_message(
             content_item=sample_content_item,
             source_type=SourceType.RSS,
             source_name="Test RSS",
         )
 
-        assert embed.timestamp == sample_content_item.published_at
+        assert len(message) <= MAX_MESSAGE_LENGTH
+        assert message.endswith("*[Message truncated]*")
 
-    def test_create_embed_uses_current_time_if_no_published_at(
-        self, content_poster, sample_content_item
-    ):
-        sample_content_item.published_at = None
+    def test_format_message_unknown_source_type(self, content_poster, sample_content_item):
+        unknown_type = MagicMock()
+        unknown_type.value = "unknown"
 
-        embed = content_poster.create_embed(
+        message = content_poster.format_message(
             content_item=sample_content_item,
-            source_type=SourceType.RSS,
-            source_name="Test RSS",
+            source_type=unknown_type,
+            source_name="Test",
         )
 
-        assert embed.timestamp is not None
+        assert "*Unknown | Test*" in message
 
 
 class TestContentPosterPostContent:
-    async def test_post_content_sends_embed(self, content_poster, sample_content_item):
+    async def test_post_content_sends_message(self, content_poster, sample_content_item):
         mock_channel = MagicMock(spec=discord.TextChannel)
         mock_message = MagicMock(spec=discord.Message)
         mock_message.id = 12345
@@ -187,9 +164,29 @@ class TestContentPosterPostContent:
 
         mock_channel.send.assert_called_once()
         call_kwargs = mock_channel.send.call_args.kwargs
-        assert "embed" in call_kwargs
-        assert isinstance(call_kwargs["embed"], discord.Embed)
+        assert "content" in call_kwargs
+        assert isinstance(call_kwargs["content"], str)
         assert result == mock_message
+
+    async def test_post_content_message_contains_item_info(
+        self, content_poster, sample_content_item
+    ):
+        mock_channel = MagicMock(spec=discord.TextChannel)
+        mock_message = MagicMock(spec=discord.Message)
+        mock_message.id = 12345
+        mock_channel.send = AsyncMock(return_value=mock_message)
+
+        await content_poster.post_content(
+            channel=mock_channel,
+            content_item=sample_content_item,
+            source_type=SourceType.SUBSTACK,
+            source_name="Test",
+        )
+
+        call_kwargs = mock_channel.send.call_args.kwargs
+        content = call_kwargs["content"]
+        assert sample_content_item.title in content
+        assert sample_content_item.summary in content
 
 
 class TestContentPosterPostUnpostedItems:
