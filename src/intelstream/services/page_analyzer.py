@@ -182,9 +182,11 @@ class PageAnalyzer:
         stop=stop_after_attempt(3),
     )
     async def _extract_profile_with_llm(self, url: str, html: str) -> dict[str, Any]:
+        sanitized_url = re.sub(r"[\x00-\x1f\x7f-\x9f]", "", url).strip()
+
         user_prompt = f"""Analyze this page and provide CSS selectors to extract blog posts/articles.
 
-URL: {url}
+URL: {sanitized_url}
 
 HTML:
 {html}
