@@ -18,7 +18,7 @@ intelstream/
 │   │   ├── substack.py        # Substack RSS adapter
 │   │   ├── youtube.py         # YouTube Data API adapter
 │   │   ├── rss.py             # Generic RSS adapter
-│   │   └── factory.py         # Adapter factory
+│   │   └── page.py            # Web page adapter with CSS selectors
 │   ├── database/
 │   │   ├── models.py          # SQLAlchemy models
 │   │   └── repository.py      # Database operations
@@ -30,7 +30,7 @@ intelstream/
 │       ├── pipeline.py        # Content pipeline orchestrator
 │       ├── summarizer.py      # Claude summarization
 │       └── content_poster.py  # Discord embed creation
-└── tests/                     # Unit tests (137 total)
+└── tests/                     # Unit tests (227 total)
 ```
 
 ## Development Phases
@@ -281,3 +281,23 @@ Added support for blogs without RSS feeds using Claude-powered page analysis.
 2. `PageAnalyzer` fetches the page and asks Claude to identify CSS selectors for posts, titles, links, dates, authors
 3. Profile is stored as JSON in `Source.extraction_profile`
 4. `PageAdapter` uses the profile to extract posts on subsequent polls
+
+### Code Review (January 2026)
+Comprehensive code review of entire codebase for errors and optimization opportunities.
+
+**Review Summary**:
+- All source code passes mypy type checking with no issues
+- All source code passes ruff linting with no issues
+- Production code is well-structured with clean architecture
+- 227 tests in total
+
+**Issues Found & Fixed**:
+- **Test isolation bug** in `tests/test_config.py`: Tests were not properly isolated from the user's `.env` file. Pydantic-settings reads from `.env` even when environment variables are set via monkeypatch. Fixed by passing `_env_file=None` to Settings constructor in tests and explicitly deleting `YOUTUBE_API_KEY` env var where needed.
+
+**Files Modified**:
+- `tests/test_config.py` - Fixed all 4 test methods to use `_env_file=None` for proper isolation
+
+**Verification**:
+- All 227 tests now pass
+- mypy: Success, no issues found in 26 source files
+- ruff: All checks passed
