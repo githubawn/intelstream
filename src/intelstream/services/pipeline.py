@@ -1,4 +1,5 @@
 import asyncio
+import json
 
 import httpx
 import structlog
@@ -76,7 +77,28 @@ class ContentPipeline:
         return total_new_items
 
     async def _fetch_source(self, source: Source) -> int:
-        adapter = self._adapters.get(source.type)
+        adapter: BaseAdapter | None = None
+
+        if source.type == SourceType.PAGE:
+            if not source.extraction_profile:
+                logger.warning("Page source missing extraction profile", source_name=source.name)
+                return 0
+            from intelstream.adapters.page import PageAdapter
+            from intelstream.services.page_analyzer import ExtractionProfile
+
+            try:
+                profile_data = json.loads(source.extraction_profile)
+                profile = ExtractionProfile.from_dict(profile_data)
+            except (json.JSONDecodeError, KeyError) as e:
+                logger.error(
+                    "Invalid extraction profile",
+                    source_name=source.name,
+                    error=str(e),
+                )
+                return 0
+            adapter = PageAdapter(extraction_profile=profile, http_client=self._http_client)
+        else:
+            adapter = self._adapters.get(source.type)
 
         if adapter is None:
             logger.warning("No adapter for source type", source_type=source.type.value)
