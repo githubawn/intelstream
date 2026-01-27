@@ -1,15 +1,16 @@
 # IntelStream
 
-A Discord bot that monitors content sources (Substack, YouTube, blogs) and posts AI-generated summaries to a Discord channel.
+A Discord bot that monitors content sources and posts AI-generated summaries to a Discord channel.
 
 ## Features
 
-- Monitor Substack newsletters via RSS
-- Monitor YouTube channels for new videos
-- Monitor any RSS/Atom feed
-- AI-powered summarization using Claude
-- Rich Discord embeds with formatted summaries
-- Manual URL summarization via slash commands
+- **Substack newsletters** - Monitor any Substack publication via RSS
+- **YouTube channels** - Track new videos with transcript-based summarization
+- **RSS/Atom feeds** - Support for any standard RSS or Atom feed
+- **Arxiv papers** - Monitor research paper categories (cs.AI, cs.LG, cs.CL, etc.)
+- **Web pages** - AI-powered extraction from any blog or news site using automatic CSS selector detection
+- **Manual summarization** - Summarize any URL on-demand with `/summarize`
+- **AI summaries** - Claude-powered summaries with thesis and key arguments format
 
 ## Requirements
 
@@ -31,10 +32,13 @@ A Discord bot that monitors content sources (Substack, YouTube, blogs) and posts
    uv sync
    ```
 
-3. Copy the example environment file and configure:
+3. Create a `.env` file with your configuration:
    ```bash
-   cp .env.example .env
-   # Edit .env with your tokens and configuration
+   DISCORD_BOT_TOKEN=your_discord_bot_token
+   DISCORD_GUILD_ID=your_guild_id
+   DISCORD_CHANNEL_ID=your_channel_id
+   DISCORD_OWNER_ID=your_user_id
+   ANTHROPIC_API_KEY=your_anthropic_api_key
    ```
 
 4. Run the bot:
@@ -44,35 +48,40 @@ A Discord bot that monitors content sources (Substack, YouTube, blogs) and posts
 
 ## Configuration
 
-See `.env.example` for all available configuration options.
-
 ### Required Environment Variables
 
-- `DISCORD_BOT_TOKEN` - Your Discord bot token
-- `DISCORD_GUILD_ID` - The Discord server ID
-- `DISCORD_CHANNEL_ID` - The channel ID for posting summaries
-- `DISCORD_OWNER_ID` - Your Discord user ID (for error notifications)
-- `ANTHROPIC_API_KEY` - Your Anthropic API key for Claude
+| Variable | Description |
+|----------|-------------|
+| `DISCORD_BOT_TOKEN` | Your Discord bot token |
+| `DISCORD_GUILD_ID` | The Discord server ID |
+| `DISCORD_CHANNEL_ID` | The channel ID for posting summaries |
+| `DISCORD_OWNER_ID` | Your Discord user ID (for error notifications) |
+| `ANTHROPIC_API_KEY` | Your Anthropic API key for Claude |
 
 ### Optional Environment Variables
 
-- `YOUTUBE_API_KEY` - YouTube Data API key (required for YouTube monitoring)
-- `DATABASE_URL` - Database connection string (default: SQLite)
-- `DEFAULT_POLL_INTERVAL_MINUTES` - Polling interval (default: 5)
-- `LOG_LEVEL` - Logging level (default: INFO)
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `YOUTUBE_API_KEY` | - | YouTube Data API key (required for YouTube monitoring) |
+| `DATABASE_URL` | `sqlite+aiosqlite:///./data/intelstream.db` | Database connection string |
+| `DEFAULT_POLL_INTERVAL_MINUTES` | `5` | Default polling interval for new sources (1-60) |
+| `CONTENT_POLL_INTERVAL_MINUTES` | `5` | Interval for checking and posting new content (1-60) |
+| `LOG_LEVEL` | `INFO` | Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL) |
 
 ### Summarization Settings
 
-- `SUMMARY_MAX_TOKENS` - Maximum tokens for AI-generated summaries (default: 2048, range: 256-8192)
-- `SUMMARY_MAX_INPUT_LENGTH` - Maximum input content length before truncation (default: 100000, range: 1000-500000)
-- `SUMMARY_MODEL` - Claude model to use for summarization (default: claude-sonnet-4-20250514)
-- `DISCORD_MAX_MESSAGE_LENGTH` - Maximum Discord message length (default: 2000, range: 500-2000)
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SUMMARY_MAX_TOKENS` | `2048` | Maximum tokens for AI-generated summaries (256-8192) |
+| `SUMMARY_MAX_INPUT_LENGTH` | `100000` | Maximum input content length before truncation (1000-500000) |
+| `SUMMARY_MODEL` | `claude-3-5-haiku-20241022` | Claude model to use for summarization |
+| `DISCORD_MAX_MESSAGE_LENGTH` | `2000` | Maximum Discord message length (500-2000) |
 
 ## Usage
 
 ### Getting Started
 
-1. **Invite the bot** to your Discord server with the necessary permissions (Send Messages, Embed Links, Use Slash Commands)
+1. **Invite the bot** to your Discord server with permissions: Send Messages, Use Slash Commands
 
 2. **Set the output channel** where content summaries will be posted:
    ```
@@ -84,9 +93,11 @@ See `.env.example` for all available configuration options.
    /source add type:Substack name:"My Newsletter" url:https://example.substack.com
    /source add type:YouTube name:"Tech Channel" url:https://youtube.com/@channel
    /source add type:RSS name:"Blog Feed" url:https://example.com/feed.xml
+   /source add type:Arxiv name:"ML Papers" url:cs.LG
+   /source add type:Page name:"Company Blog" url:https://example.com/blog
    ```
 
-4. The bot will automatically poll sources every 5 minutes (configurable), fetch new content, generate AI summaries, and post them to your configured channel.
+4. The bot will automatically poll sources, fetch new content, generate AI summaries, and post them to your configured channel.
 
 ### Discord Commands
 
@@ -94,31 +105,45 @@ See `.env.example` for all available configuration options.
 
 | Command | Description |
 |---------|-------------|
-| `/source add type:<type> name:<name> url:<url>` | Add a new content source (Substack, YouTube, or RSS) |
+| `/source add type:<type> name:<name> url:<url>` | Add a new content source |
 | `/source list` | List all configured sources with their status |
 | `/source remove name:<name>` | Remove a source by name |
 | `/source toggle name:<name>` | Enable or disable a source |
+
+**Supported source types:**
+- `Substack` - Substack newsletter URL
+- `YouTube` - YouTube channel URL (requires YouTube API key)
+- `RSS` - Any RSS/Atom feed URL
+- `Arxiv` - Arxiv category code (e.g., `cs.AI`, `cs.LG`, `cs.CL`, `cs.CV`, `stat.ML`)
+- `Page` - Any web page URL (uses AI to detect content structure)
 
 #### Configuration
 
 | Command | Description |
 |---------|-------------|
 | `/config channel #channel` | Set the channel where summaries will be posted |
-| `/config show` | Show current bot configuration (channel, sources, poll interval) |
+| `/config show` | Show current bot configuration |
+
+#### Manual Summarization
+
+| Command | Description |
+|---------|-------------|
+| `/summarize url:<url>` | Get an AI summary of any URL (YouTube, Substack, or web page) |
 
 ### How It Works
 
 1. **Polling**: The bot periodically checks all active sources for new content
 2. **Fetching**: New articles/videos are fetched and stored in the database
-3. **Summarization**: Claude AI generates concise summaries of each piece of content
-4. **Posting**: Rich Discord embeds are posted with the summary, source info, and link
+3. **Summarization**: Claude AI generates structured summaries with thesis and key arguments
+4. **Posting**: Plain text messages are posted with the summary, author, title link, and source
 
-### Embed Styling
+### Source-Specific Behavior
 
-Each source type has distinct styling:
-- **Substack**: Orange accent color with newsletter icon
-- **YouTube**: Red accent color with video icon
-- **RSS**: Blue accent color with feed icon
+**YouTube**: Fetches video transcripts (manual or auto-generated) for summarization. Falls back to video description if no transcript is available.
+
+**Arxiv**: Monitors RSS feeds for specific categories. Summaries focus on the problem solved, key innovation, and practical implications.
+
+**Page**: When you add a Page source, the bot uses Claude to analyze the page structure and automatically determine CSS selectors for extracting posts. This allows monitoring blogs and news sites that don't have RSS feeds.
 
 ## Development
 
@@ -139,6 +164,19 @@ uv run ruff format .
 
 ```bash
 uv run mypy src/
+```
+
+### Project Structure
+
+```
+src/intelstream/
+├── adapters/          # Source adapters (Substack, YouTube, RSS, Arxiv, Page)
+├── database/          # SQLAlchemy models and repository
+├── discord/cogs/      # Discord command handlers
+├── services/          # Business logic (pipeline, summarizer, content poster)
+├── bot.py             # Discord bot main class
+├── config.py          # Pydantic settings
+└── main.py            # Entry point
 ```
 
 ## License
