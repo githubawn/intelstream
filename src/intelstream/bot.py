@@ -55,11 +55,13 @@ class IntelStreamBot(commands.Bot):
             SourceManagement,
             Summarize,
         )
+        from intelstream.discord.cogs.message_forwarding import MessageForwarding
 
         await self.add_cog(SourceManagement(self))
         await self.add_cog(ConfigManagement(self))
         await self.add_cog(ContentPosting(self))
         await self.add_cog(Summarize(self))
+        await self.add_cog(MessageForwarding(self))
 
         guild = discord.Object(id=self.settings.discord_guild_id)
         self.tree.copy_global_to(guild=guild)

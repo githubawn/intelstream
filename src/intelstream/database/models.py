@@ -98,3 +98,21 @@ class ExtractionCache(Base):
 
     def __repr__(self) -> str:
         return f"<ExtractionCache(url={self.url!r}, cached_at={self.cached_at!r})>"
+
+
+class ForwardingRule(Base):
+    __tablename__ = "forwarding_rules"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    guild_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    source_channel_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    source_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    destination_channel_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    destination_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    messages_forwarded: Mapped[int] = mapped_column(Integer, default=0)
+    last_forwarded_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+
+    def __repr__(self) -> str:
+        return f"<ForwardingRule(source={self.source_channel_id!r}, dest={self.destination_channel_id!r})>"

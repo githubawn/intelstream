@@ -13,6 +13,7 @@ from intelstream.database.models import (
     ContentItem,
     DiscordConfig,
     ExtractionCache,
+    ForwardingRule,
     Source,
     SourceType,
 )
@@ -362,3 +363,87 @@ class Repository:
             if source and (source.consecutive_failures or 0) > 0:
                 source.consecutive_failures = 0
                 await session.commit()
+
+    async def add_forwarding_rule(
+        self,
+        guild_id: str,
+        source_channel_id: str,
+        source_type: str,
+        destination_channel_id: str,
+        destination_type: str,
+    ) -> ForwardingRule:
+        async with self.session() as session:
+            rule = ForwardingRule(
+                guild_id=guild_id,
+                source_channel_id=source_channel_id,
+                source_type=source_type,
+                destination_channel_id=destination_channel_id,
+                destination_type=destination_type,
+            )
+            session.add(rule)
+            await session.commit()
+            await session.refresh(rule)
+            return rule
+
+    async def get_forwarding_rules_for_source(self, source_channel_id: str) -> list[ForwardingRule]:
+        async with self.session() as session:
+            result = await session.execute(
+                select(ForwardingRule)
+                .where(ForwardingRule.source_channel_id == source_channel_id)
+                .where(ForwardingRule.is_active == True)  # noqa: E712
+            )
+            return list(result.scalars().all())
+
+    async def get_forwarding_rules_for_guild(self, guild_id: str) -> list[ForwardingRule]:
+        async with self.session() as session:
+            result = await session.execute(
+                select(ForwardingRule)
+                .where(ForwardingRule.guild_id == guild_id)
+                .order_by(ForwardingRule.created_at.desc())
+            )
+            return list(result.scalars().all())
+
+    async def increment_forwarding_count(self, rule_id: str) -> None:
+        async with self.session() as session:
+            result = await session.execute(
+                select(ForwardingRule).where(ForwardingRule.id == rule_id)
+            )
+            rule = result.scalar_one_or_none()
+            if rule:
+                rule.messages_forwarded = (rule.messages_forwarded or 0) + 1
+                rule.last_forwarded_at = datetime.now(UTC)
+                await session.commit()
+
+    async def delete_forwarding_rule(
+        self, guild_id: str, source_channel_id: str, destination_channel_id: str
+    ) -> bool:
+        async with self.session() as session:
+            result = await session.execute(
+                select(ForwardingRule)
+                .where(ForwardingRule.guild_id == guild_id)
+                .where(ForwardingRule.source_channel_id == source_channel_id)
+                .where(ForwardingRule.destination_channel_id == destination_channel_id)
+            )
+            rule = result.scalar_one_or_none()
+            if rule:
+                await session.delete(rule)
+                await session.commit()
+                return True
+            return False
+
+    async def set_forwarding_rule_active(
+        self, guild_id: str, source_channel_id: str, destination_channel_id: str, is_active: bool
+    ) -> bool:
+        async with self.session() as session:
+            result = await session.execute(
+                select(ForwardingRule)
+                .where(ForwardingRule.guild_id == guild_id)
+                .where(ForwardingRule.source_channel_id == source_channel_id)
+                .where(ForwardingRule.destination_channel_id == destination_channel_id)
+            )
+            rule = result.scalar_one_or_none()
+            if rule:
+                rule.is_active = is_active
+                await session.commit()
+                return True
+            return False
