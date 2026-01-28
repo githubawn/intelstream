@@ -3,7 +3,14 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from intelstream.database.models import Base, ContentItem, DiscordConfig, Source, SourceType
+from intelstream.database.models import (
+    Base,
+    ContentItem,
+    DiscordConfig,
+    ExtractionCache,
+    Source,
+    SourceType,
+)
 
 
 class Repository:
@@ -31,6 +38,8 @@ class Repository:
         feed_url: str | None = None,
         poll_interval_minutes: int = 5,
         extraction_profile: str | None = None,
+        discovery_strategy: str | None = None,
+        url_pattern: str | None = None,
     ) -> Source:
         async with self.session() as session:
             source = Source(
@@ -40,6 +49,8 @@ class Repository:
                 feed_url=feed_url,
                 poll_interval_minutes=poll_interval_minutes,
                 extraction_profile=extraction_profile,
+                discovery_strategy=discovery_strategy,
+                url_pattern=url_pattern,
             )
             session.add(source)
             await session.commit()
@@ -247,3 +258,84 @@ class Repository:
                 select(DiscordConfig).where(DiscordConfig.guild_id == guild_id)
             )
             return result.scalar_one_or_none()
+
+    async def update_source_discovery_strategy(
+        self,
+        source_id: str,
+        discovery_strategy: str,
+        feed_url: str | None = None,
+        url_pattern: str | None = None,
+    ) -> None:
+        async with self.session() as session:
+            result = await session.execute(select(Source).where(Source.id == source_id))
+            source = result.scalar_one_or_none()
+            if source:
+                source.discovery_strategy = discovery_strategy
+                if feed_url is not None:
+                    source.feed_url = feed_url
+                if url_pattern is not None:
+                    source.url_pattern = url_pattern
+                await session.commit()
+
+    async def update_source_content_hash(self, source_id: str, content_hash: str) -> None:
+        async with self.session() as session:
+            result = await session.execute(select(Source).where(Source.id == source_id))
+            source = result.scalar_one_or_none()
+            if source:
+                source.last_content_hash = content_hash
+                await session.commit()
+
+    async def get_extraction_cache(self, url: str) -> ExtractionCache | None:
+        async with self.session() as session:
+            result = await session.execute(
+                select(ExtractionCache).where(ExtractionCache.url == url)
+            )
+            return result.scalar_one_or_none()
+
+    async def set_extraction_cache(
+        self, url: str, content_hash: str, posts_json: str
+    ) -> ExtractionCache:
+        async with self.session() as session:
+            result = await session.execute(
+                select(ExtractionCache).where(ExtractionCache.url == url)
+            )
+            cache = result.scalar_one_or_none()
+            if cache:
+                cache.content_hash = content_hash
+                cache.posts_json = posts_json
+                cache.cached_at = datetime.now(UTC)
+            else:
+                cache = ExtractionCache(
+                    url=url,
+                    content_hash=content_hash,
+                    posts_json=posts_json,
+                )
+                session.add(cache)
+            await session.commit()
+            await session.refresh(cache)
+            return cache
+
+    async def get_known_urls_for_source(self, source_id: str) -> set[str]:
+        async with self.session() as session:
+            result = await session.execute(
+                select(ContentItem.original_url).where(ContentItem.source_id == source_id)
+            )
+            return {row[0] for row in result.all()}
+
+    async def increment_failure_count(self, source_id: str) -> int:
+        async with self.session() as session:
+            result = await session.execute(select(Source).where(Source.id == source_id))
+            source = result.scalar_one_or_none()
+            if source:
+                source.consecutive_failures = (source.consecutive_failures or 0) + 1
+                await session.commit()
+                return source.consecutive_failures
+            return 0
+
+    async def reset_failure_count(self, source_id: str) -> None:
+        async with self.session() as session:
+            result = await session.execute(select(Source).where(Source.id == source_id))
+            source = result.scalar_one_or_none()
+            if source and source.consecutive_failures > 0:
+                source.consecutive_failures = 0
+                await session.commit()

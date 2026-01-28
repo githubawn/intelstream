@@ -20,6 +20,7 @@ dependencies = [
     "pydantic-settings>=2.7.1",
     "tenacity>=9.0.0",
     "structlog>=24.4.0",
+    "trafilatura>=1.12.0",
 ]
 
 [project.optional-dependencies]
@@ -85,6 +86,7 @@ module = [
     "feedparser.*",
     "googleapiclient.*",
     "youtube_transcript_api.*",
+    "trafilatura.*",
 ]
 ignore_missing_imports = true
 

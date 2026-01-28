@@ -16,6 +16,7 @@ class SourceType(enum.Enum):
     RSS = "rss"
     PAGE = "page"
     ARXIV = "arxiv"
+    BLOG = "blog"
 
 
 class Source(Base):
@@ -27,6 +28,10 @@ class Source(Base):
     identifier: Mapped[str] = mapped_column(String(512), nullable=False, unique=True)
     feed_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     extraction_profile: Mapped[str | None] = mapped_column(Text, nullable=True)
+    discovery_strategy: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    url_pattern: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    last_content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    consecutive_failures: Mapped[int] = mapped_column(Integer, default=0)
     poll_interval_minutes: Mapped[int] = mapped_column(Integer, default=5)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     last_polled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -80,3 +85,16 @@ class DiscordConfig(Base):
 
     def __repr__(self) -> str:
         return f"<DiscordConfig(guild_id={self.guild_id!r}, channel_id={self.channel_id!r})>"
+
+
+class ExtractionCache(Base):
+    __tablename__ = "extraction_cache"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    url: Mapped[str] = mapped_column(String(1024), nullable=False, unique=True, index=True)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    posts_json: Mapped[str] = mapped_column(Text, nullable=False)
+    cached_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+
+    def __repr__(self) -> str:
+        return f"<ExtractionCache(url={self.url!r}, cached_at={self.cached_at!r})>"
