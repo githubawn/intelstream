@@ -492,3 +492,149 @@ class TestMigrations:
 
         sources = await repository.get_all_sources()
         assert sources == []
+
+
+class TestForwardingRuleOperations:
+    async def test_add_forwarding_rule(self, repository: Repository) -> None:
+        rule = await repository.add_forwarding_rule(
+            guild_id="guild-123",
+            source_channel_id="source-456",
+            source_type="channel",
+            destination_channel_id="dest-789",
+            destination_type="thread",
+        )
+
+        assert rule.id is not None
+        assert rule.guild_id == "guild-123"
+        assert rule.source_channel_id == "source-456"
+        assert rule.source_type == "channel"
+        assert rule.destination_channel_id == "dest-789"
+        assert rule.destination_type == "thread"
+        assert rule.is_active is True
+        assert rule.messages_forwarded == 0
+
+    async def test_get_forwarding_rules_for_source(self, repository: Repository) -> None:
+        await repository.add_forwarding_rule(
+            guild_id="guild-123",
+            source_channel_id="source-456",
+            source_type="channel",
+            destination_channel_id="dest-789",
+            destination_type="thread",
+        )
+
+        rules = await repository.get_forwarding_rules_for_source("source-456")
+        assert len(rules) == 1
+        assert rules[0].destination_channel_id == "dest-789"
+
+        empty = await repository.get_forwarding_rules_for_source("nonexistent")
+        assert len(empty) == 0
+
+    async def test_get_forwarding_rules_for_source_excludes_inactive(
+        self, repository: Repository
+    ) -> None:
+        await repository.add_forwarding_rule(
+            guild_id="guild-123",
+            source_channel_id="source-456",
+            source_type="channel",
+            destination_channel_id="dest-789",
+            destination_type="thread",
+        )
+
+        await repository.set_forwarding_rule_active("guild-123", "source-456", "dest-789", False)
+
+        rules = await repository.get_forwarding_rules_for_source("source-456")
+        assert len(rules) == 0
+
+    async def test_get_forwarding_rules_for_guild(self, repository: Repository) -> None:
+        await repository.add_forwarding_rule(
+            guild_id="guild-123",
+            source_channel_id="source-1",
+            source_type="channel",
+            destination_channel_id="dest-1",
+            destination_type="channel",
+        )
+
+        await repository.add_forwarding_rule(
+            guild_id="guild-123",
+            source_channel_id="source-2",
+            source_type="thread",
+            destination_channel_id="dest-2",
+            destination_type="thread",
+        )
+
+        await repository.add_forwarding_rule(
+            guild_id="guild-other",
+            source_channel_id="source-3",
+            source_type="channel",
+            destination_channel_id="dest-3",
+            destination_type="channel",
+        )
+
+        rules = await repository.get_forwarding_rules_for_guild("guild-123")
+        assert len(rules) == 2
+
+        other_rules = await repository.get_forwarding_rules_for_guild("guild-other")
+        assert len(other_rules) == 1
+
+    async def test_increment_forwarding_count(self, repository: Repository) -> None:
+        rule = await repository.add_forwarding_rule(
+            guild_id="guild-123",
+            source_channel_id="source-456",
+            source_type="channel",
+            destination_channel_id="dest-789",
+            destination_type="thread",
+        )
+
+        assert rule.messages_forwarded == 0
+        assert rule.last_forwarded_at is None
+
+        await repository.increment_forwarding_count(rule.id)
+        await repository.increment_forwarding_count(rule.id)
+
+        rules = await repository.get_forwarding_rules_for_source("source-456")
+        assert len(rules) == 1
+        assert rules[0].messages_forwarded == 2
+        assert rules[0].last_forwarded_at is not None
+
+    async def test_delete_forwarding_rule(self, repository: Repository) -> None:
+        await repository.add_forwarding_rule(
+            guild_id="guild-123",
+            source_channel_id="source-456",
+            source_type="channel",
+            destination_channel_id="dest-789",
+            destination_type="thread",
+        )
+
+        deleted = await repository.delete_forwarding_rule("guild-123", "source-456", "dest-789")
+        assert deleted is True
+
+        rules = await repository.get_forwarding_rules_for_guild("guild-123")
+        assert len(rules) == 0
+
+        not_found = await repository.delete_forwarding_rule("guild-123", "source-456", "dest-789")
+        assert not_found is False
+
+    async def test_set_forwarding_rule_active(self, repository: Repository) -> None:
+        await repository.add_forwarding_rule(
+            guild_id="guild-123",
+            source_channel_id="source-456",
+            source_type="channel",
+            destination_channel_id="dest-789",
+            destination_type="thread",
+        )
+
+        updated = await repository.set_forwarding_rule_active("guild-123", "source-456", "dest-789", False)
+        assert updated is True
+
+        rules = await repository.get_forwarding_rules_for_guild("guild-123")
+        assert len(rules) == 1
+        assert rules[0].is_active is False
+
+        updated = await repository.set_forwarding_rule_active("guild-123", "source-456", "dest-789", True)
+        assert updated is True
+
+        rules = await repository.get_forwarding_rules_for_guild("guild-123")
+        assert rules[0].is_active is True
+
+        not_found = await repository.set_forwarding_rule_active("guild-123", "nonexistent", "dest-789", False)
+        assert not_found is False
