@@ -34,6 +34,20 @@ class TestSourceOperations:
         assert source.poll_interval_minutes == 10
         assert source.is_active is True
 
+    async def test_add_source_with_channel(self, repository: Repository) -> None:
+        source = await repository.add_source(
+            source_type=SourceType.SUBSTACK,
+            name="Channel Scoped Source",
+            identifier="channel-scoped",
+            feed_url="https://test.substack.com/feed",
+            guild_id="guild-123",
+            channel_id="channel-456",
+        )
+
+        assert source.id is not None
+        assert source.guild_id == "guild-123"
+        assert source.channel_id == "channel-456"
+
     async def test_get_source_by_identifier(self, repository: Repository) -> None:
         await repository.add_source(
             source_type=SourceType.YOUTUBE,
@@ -483,6 +497,8 @@ class TestMigrations:
         assert "url_pattern" in columns
         assert "last_content_hash" in columns
         assert "consecutive_failures" in columns
+        assert "guild_id" in columns
+        assert "channel_id" in columns
 
         await repo.close()
 
@@ -492,6 +508,46 @@ class TestMigrations:
 
         sources = await repository.get_all_sources()
         assert sources == []
+
+    async def test_migrate_sources_to_channel(self, repository: Repository) -> None:
+        await repository.add_source(
+            source_type=SourceType.SUBSTACK,
+            name="No Channel",
+            identifier="no-channel",
+        )
+
+        await repository.add_source(
+            source_type=SourceType.RSS,
+            name="Has Channel",
+            identifier="has-channel",
+            guild_id="existing-guild",
+            channel_id="existing-channel",
+        )
+
+        migrated_count = await repository.migrate_sources_to_channel(
+            guild_id="new-guild",
+            channel_id="new-channel",
+        )
+
+        assert migrated_count == 1
+
+        updated_source = await repository.get_source_by_identifier("no-channel")
+        assert updated_source is not None
+        assert updated_source.guild_id == "new-guild"
+        assert updated_source.channel_id == "new-channel"
+
+        unchanged_source = await repository.get_source_by_identifier("has-channel")
+        assert unchanged_source is not None
+        assert unchanged_source.guild_id == "existing-guild"
+        assert unchanged_source.channel_id == "existing-channel"
+
+    async def test_migrate_sources_to_channel_empty(self, repository: Repository) -> None:
+        migrated_count = await repository.migrate_sources_to_channel(
+            guild_id="guild",
+            channel_id="channel",
+        )
+
+        assert migrated_count == 0
 
 
 class TestForwardingRuleOperations:

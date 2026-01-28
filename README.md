@@ -36,9 +36,11 @@ A Discord bot that monitors content sources and posts AI-generated summaries to 
    ```bash
    DISCORD_BOT_TOKEN=your_discord_bot_token
    DISCORD_GUILD_ID=your_guild_id
-   DISCORD_CHANNEL_ID=your_channel_id
    DISCORD_OWNER_ID=your_user_id
    ANTHROPIC_API_KEY=your_anthropic_api_key
+
+   # Optional: Set a default channel for summaries
+   # DISCORD_CHANNEL_ID=your_channel_id
    ```
 
 4. Run the bot:
@@ -54,7 +56,6 @@ A Discord bot that monitors content sources and posts AI-generated summaries to 
 |----------|-------------|
 | `DISCORD_BOT_TOKEN` | Your Discord bot token |
 | `DISCORD_GUILD_ID` | The Discord server ID |
-| `DISCORD_CHANNEL_ID` | The channel ID for posting summaries |
 | `DISCORD_OWNER_ID` | Your Discord user ID (for error notifications) |
 | `ANTHROPIC_API_KEY` | Your Anthropic API key for Claude |
 
@@ -62,6 +63,7 @@ A Discord bot that monitors content sources and posts AI-generated summaries to 
 
 | Variable | Default | Description |
 |----------|---------|-------------|
+| `DISCORD_CHANNEL_ID` | - | Default channel for posting summaries (see Multi-Channel Setup) |
 | `YOUTUBE_API_KEY` | - | YouTube Data API key (required for YouTube monitoring) |
 | `DATABASE_URL` | `sqlite+aiosqlite:///./data/intelstream.db` | Database connection string |
 | `DEFAULT_POLL_INTERVAL_MINUTES` | `5` | Default polling interval for new sources (1-60) |
@@ -105,10 +107,12 @@ A Discord bot that monitors content sources and posts AI-generated summaries to 
 
 | Command | Description |
 |---------|-------------|
-| `/source add type:<type> name:<name> url:<url>` | Add a new content source |
+| `/source add type:<type> name:<name> url:<url> [channel:#channel]` | Add a new content source |
 | `/source list` | List all configured sources with their status |
 | `/source remove name:<name>` | Remove a source by name |
 | `/source toggle name:<name>` | Enable or disable a source |
+
+The optional `channel` parameter specifies which channel this source should post to. If omitted, the source uses the guild's default channel (set via `/config channel`).
 
 **Supported source types:**
 - `Substack` - Substack newsletter URL
@@ -174,6 +178,28 @@ Your Server: #announcements → "AI News" thread
 **Arxiv**: Monitors RSS feeds for specific categories. Summaries focus on the problem solved, key innovation, and practical implications.
 
 **Page**: When you add a Page source, the bot uses Claude to analyze the page structure and automatically determine CSS selectors for extracting posts. This allows monitoring blogs and news sites that don't have RSS feeds.
+
+### Multi-Channel Setup
+
+By default, all sources post to a single channel configured via `/config channel` or the `DISCORD_CHANNEL_ID` environment variable. For more advanced setups, you can route different sources to different channels.
+
+**Per-source channels**: Specify a channel when adding a source:
+```
+/source add type:Substack name:"Tech News" url:https://tech.substack.com channel:#tech-feed
+/source add type:YouTube name:"Gaming" url:https://youtube.com/@gaming channel:#gaming-feed
+/source add type:RSS name:"General" url:https://example.com/feed.xml
+```
+
+In this example:
+- "Tech News" posts to #tech-feed
+- "Gaming" posts to #gaming-feed
+- "General" uses the default channel (set via `/config channel`)
+
+**Migration behavior**: If you have existing sources and set `DISCORD_CHANNEL_ID` in your environment, those sources will automatically be assigned to that channel on startup. This ensures existing setups continue working when upgrading to a multi-channel configuration.
+
+**Channel priority**:
+1. Source-specific channel (set via `/source add ... channel:#channel`)
+2. Guild default channel (set via `/config channel`)
 
 ## Development
 
