@@ -200,9 +200,7 @@ class TestContentPosterPostUnpostedItems:
 
         assert result == 0
 
-    async def test_posts_to_source_channel(
-        self, content_poster, mock_bot, sample_content_item
-    ):
+    async def test_posts_to_source_channel(self, content_poster, mock_bot, sample_content_item):
         mock_channel = MagicMock(spec=discord.TextChannel)
         mock_message = MagicMock(spec=discord.Message)
         mock_message.id = 789

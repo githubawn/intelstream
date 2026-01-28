@@ -188,9 +188,7 @@ class Repository:
     async def get_sources_for_guild(self, guild_id: str) -> list[Source]:
         async with self.session() as session:
             result = await session.execute(
-                select(Source)
-                .where(Source.guild_id == guild_id)
-                .where(Source.is_active == True)  # noqa: E712
+                select(Source).where(Source.guild_id == guild_id).where(Source.is_active == True)  # noqa: E712
             )
             return list(result.scalars().all())
 

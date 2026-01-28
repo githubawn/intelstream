@@ -301,3 +301,93 @@ Comprehensive code review of entire codebase for errors and optimization opportu
 - All 227 tests now pass
 - mypy: Success, no issues found in 26 source files
 - ruff: All checks passed
+
+### Feature Roadmap Creation (January 2026)
+
+Created comprehensive implementation plans for upcoming features in `design/FEATURE_ROADMAP.md`:
+
+**Features Planned**:
+1. **Smart Blog Adapter** (Section 0 - Priority) - Cascading discovery strategies for non-standard blog sites
+2. **Arxiv Adapter** - Monitor academic paper feeds by category
+3. **GitHub Releases Adapter** - Monitor repository releases for tool/model updates
+4. **Daily Digest Command** - `/digest` command for catch-up summaries
+5. **Wallet Tracking** (Future) - Placeholder for cryptocurrency wallet monitoring
+
+### Design Review (January 2026)
+
+Conducted critical review of all feature designs to identify potential issues and gaps.
+
+**Issues Identified & Mitigations Added**:
+
+| Feature | Key Issues | Mitigations |
+|---------|------------|-------------|
+| Smart Blog Adapter | RSS false positives, fragile pattern inference, content hash sensitivity, no strategy fallback | Content-type validation, LLM-assisted pattern inference, main-content-only hashing, failure counter with auto re-analysis |
+| Arxiv Adapter | Volume flooding (100+ papers/day), missed papers during downtime, LaTeX in abstracts | Keyword filtering (MVP requirement), API-based gap recovery, LaTeX stripping/conversion |
+| GitHub Adapter | Rate limiting math fails at scale, enormous release notes, pre-release ambiguity | Atom feed as primary (no API limits), smart truncation, configurable pre-release handling |
+| Daily Digest | No spam protection, query performance, category imbalance | Cooldown decorator (MVP requirement), database indexes, balanced per-category limits |
+
+**Cross-Cutting Concerns Documented**:
+1. Error recovery and retry logic (shared utility pattern)
+2. Circuit breaker pattern for external services
+3. Monitoring and metrics collection
+4. Configuration management (centralize magic numbers)
+5. Multi-guild considerations (defer, document assumptions)
+6. Content update handling (ignore for MVP, document)
+7. Logging standards
+
+**MVP Requirements Established**:
+- Smart Blog Adapter: RSS validation, JSON extraction robustness, strategy fallback
+- Arxiv Adapter: Keyword filtering to prevent channel flooding
+- GitHub Adapter: Rate limit handling
+- Daily Digest: Cooldown to prevent spam
+
+**Files Modified**:
+- `design/FEATURE_ROADMAP.md` - Added "Known Issues & Mitigations" sections to all features, added "Cross-Cutting Concerns" section, updated implementation notes with MVP requirements
+
+### Message Forwarding Feature (January 2026)
+
+Implemented the message forwarding feature as designed in `design/MESSAGE_FORWARDING.md`.
+
+**Use Case**: Discord's native "Follow" feature only forwards announcement channel messages to channels, not threads. This feature allows forwarding those messages to a thread for better organization.
+
+**Files Created**:
+- `src/intelstream/database/models.py` - Added `ForwardingRule` model
+- `src/intelstream/database/repository.py` - Added 6 forwarding rule methods
+- `src/intelstream/services/message_forwarder.py` - Message forwarding service
+- `src/intelstream/discord/cogs/message_forwarding.py` - Discord cog with slash commands
+- `tests/test_database.py` - Added `TestForwardingRuleOperations` class (7 tests)
+- `tests/test_services/test_message_forwarder.py` - Forwarder service tests (15 tests)
+- `tests/test_discord/test_message_forwarding.py` - Cog tests (18 tests)
+
+**Key Implementation Details**:
+- Commands: `/forward add`, `/forward list`, `/forward remove`, `/forward pause`, `/forward resume`
+- In-memory cache for efficient `on_message` lookups
+- Rate limiting via semaphore (5 concurrent forwards)
+- Automatic thread unarchiving for archived destination threads
+- Attachment size checking against guild limits
+- Bot ignores its own messages to prevent loops
+
+**Status**: PR #27 created (https://github.com/user1303836/intelstream/pull/27)
+
+### Channel-Scoped Sources (January 2026)
+
+Implemented channel-scoped source posting. When a source is added via `/source add` in a specific channel, content for that source will only be posted to that channel.
+
+**Problem**: Previously, all sources were global and content was posted to a single guild-wide channel configured via `/config channel`. Users wanted sources to post to the channel where they were added.
+
+**Solution**: Added `guild_id` and `channel_id` fields to the `Source` model and updated the posting logic to respect per-source channels.
+
+**Files Modified**:
+- `src/intelstream/database/models.py` - Added `guild_id` and `channel_id` fields to `Source` model
+- `src/intelstream/database/repository.py` - Added migration for new columns, updated `add_source()` signature
+- `src/intelstream/discord/cogs/source_management.py` - Capture `channel_id` and `guild_id` from interaction when adding sources, show channel info in `/source list`
+- `src/intelstream/services/content_poster.py` - Updated `post_unposted_items()` to post to each source's channel
+- `tests/test_database.py` - Added test for source with channel
+- `tests/test_services/test_content_poster.py` - Rewrote posting tests for new logic
+- `tests/test_discord/test_source_management.py` - Updated tests with guild/channel IDs
+
+**Key Implementation Details**:
+- `guild_id` and `channel_id` are nullable for backward compatibility
+- Posting logic: first check source's `channel_id`, fall back to guild's `DiscordConfig` if not set
+- Items from sources belonging to different guilds are skipped during posting
+- Source list now shows which channel each source posts to
