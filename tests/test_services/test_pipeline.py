@@ -15,6 +15,7 @@ from intelstream.services.summarizer import SummarizationError, SummarizationSer
 def mock_settings():
     settings = MagicMock(spec=Settings)
     settings.youtube_api_key = "test-youtube-key"
+    settings.anthropic_api_key = "test-anthropic-key"
     return settings
 
 
@@ -93,6 +94,7 @@ class TestContentPipelineInitialization:
     async def test_initialize_without_youtube_key(self, mock_repository, mock_summarizer):
         settings = MagicMock(spec=Settings)
         settings.youtube_api_key = None
+        settings.anthropic_api_key = "test-anthropic-key"
 
         pipeline = ContentPipeline(
             settings=settings, repository=mock_repository, summarizer=mock_summarizer

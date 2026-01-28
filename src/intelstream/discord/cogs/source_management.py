@@ -2,11 +2,13 @@ import json
 from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
+import anthropic
 import discord
 import structlog
 from discord import app_commands
 from discord.ext import commands
 
+from intelstream.adapters.smart_blog import SmartBlogAdapter
 from intelstream.database.models import SourceType
 from intelstream.services.page_analyzer import PageAnalysisError, PageAnalyzer
 
@@ -55,12 +57,24 @@ def parse_source_identifier(source_type: SourceType, url: str) -> tuple[str, str
         feed_url = f"https://arxiv.org/rss/{identifier}"
         return identifier, feed_url
 
+    elif source_type == SourceType.BLOG:
+        identifier = parsed.netloc + parsed.path.rstrip("/")
+        return identifier, None
+
     return url, None
 
 
 class SourceManagement(commands.Cog):
     def __init__(self, bot: "IntelStreamBot") -> None:
         self.bot = bot
+        self._anthropic_client: anthropic.AsyncAnthropic | None = None
+
+    def _get_anthropic_client(self) -> anthropic.AsyncAnthropic:
+        if self._anthropic_client is None:
+            self._anthropic_client = anthropic.AsyncAnthropic(
+                api_key=self.bot.settings.anthropic_api_key
+            )
+        return self._anthropic_client
 
     source_group = app_commands.Group(name="source", description="Manage content sources")
 
@@ -68,7 +82,7 @@ class SourceManagement(commands.Cog):
     @app_commands.describe(
         source_type="Type of source to add",
         name="Display name for this source",
-        url="URL of the source (Substack URL, YouTube channel, or RSS feed)",
+        url="URL of the source (Substack URL, YouTube channel, RSS feed, or blog page)",
     )
     @app_commands.choices(
         source_type=[
@@ -77,6 +91,7 @@ class SourceManagement(commands.Cog):
             app_commands.Choice(name="RSS", value="rss"),
             app_commands.Choice(name="Page", value="page"),
             app_commands.Choice(name="Arxiv", value="arxiv"),
+            app_commands.Choice(name="Blog", value="blog"),
         ]
     )
     async def source_add(
@@ -110,6 +125,39 @@ class SourceManagement(commands.Cog):
             )
             return
 
+        if stype == SourceType.BLOG and not self.bot.settings.anthropic_api_key:
+            await interaction.followup.send(
+                "Blog sources are not available. No Anthropic API key configured.",
+                ephemeral=True,
+            )
+            return
+
+        discovery_strategy: str | None = None
+        discovered_feed_url: str | None = None
+        discovered_url_pattern: str | None = None
+
+        if stype == SourceType.BLOG:
+            adapter = SmartBlogAdapter(
+                anthropic_client=self._get_anthropic_client(),
+                repository=self.bot.repository,
+            )
+            result = await adapter.analyze_site(url)
+            if not result.success:
+                await interaction.followup.send(
+                    f"Failed to analyze blog: {result.error}",
+                    ephemeral=True,
+                )
+                return
+            discovery_strategy = result.strategy
+            discovered_feed_url = result.feed_url
+            discovered_url_pattern = result.url_pattern
+            logger.info(
+                "Blog analysis complete",
+                url=url,
+                strategy=result.strategy,
+                post_count=result.post_count,
+            )
+
         extraction_profile_json: str | None = None
         if stype == SourceType.PAGE:
             try:
@@ -141,13 +189,17 @@ class SourceManagement(commands.Cog):
             )
             return
 
+        final_feed_url = discovered_feed_url if discovered_feed_url else feed_url
+
         source = await self.bot.repository.add_source(
             source_type=stype,
             name=name,
             identifier=identifier,
-            feed_url=feed_url,
+            feed_url=final_feed_url,
             poll_interval_minutes=self.bot.settings.default_poll_interval_minutes,
             extraction_profile=extraction_profile_json,
+            discovery_strategy=discovery_strategy,
+            url_pattern=discovered_url_pattern,
         )
 
         logger.info(
@@ -166,8 +218,10 @@ class SourceManagement(commands.Cog):
         embed.add_field(name="Name", value=name, inline=True)
         embed.add_field(name="Type", value=source_type.name, inline=True)
         embed.add_field(name="Identifier", value=identifier, inline=False)
-        if feed_url:
-            embed.add_field(name="Feed URL", value=feed_url, inline=False)
+        if final_feed_url:
+            embed.add_field(name="Feed URL", value=final_feed_url, inline=False)
+        if discovery_strategy:
+            embed.add_field(name="Discovery Strategy", value=discovery_strategy, inline=True)
 
         await interaction.followup.send(embed=embed, ephemeral=True)
 

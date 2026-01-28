@@ -1,12 +1,14 @@
 import asyncio
 import json
 
+import anthropic
 import httpx
 import structlog
 
 from intelstream.adapters.arxiv import ArxivAdapter
 from intelstream.adapters.base import BaseAdapter, ContentData
 from intelstream.adapters.rss import RSSAdapter
+from intelstream.adapters.smart_blog import SmartBlogAdapter
 from intelstream.adapters.substack import SubstackAdapter
 from intelstream.adapters.youtube import YouTubeAdapter
 from intelstream.config import Settings
@@ -52,6 +54,14 @@ class ContentPipeline:
         if self._settings.youtube_api_key:
             adapters[SourceType.YOUTUBE] = YouTubeAdapter(
                 api_key=self._settings.youtube_api_key,
+                http_client=self._http_client,
+            )
+
+        if self._settings.anthropic_api_key and self._settings.anthropic_api_key.strip():
+            anthropic_client = anthropic.AsyncAnthropic(api_key=self._settings.anthropic_api_key)
+            adapters[SourceType.BLOG] = SmartBlogAdapter(
+                anthropic_client=anthropic_client,
+                repository=self._repository,
                 http_client=self._http_client,
             )
 
