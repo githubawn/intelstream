@@ -115,11 +115,15 @@ class Repository:
             result = await session.execute(select(Source).where(Source.name == name))
             return result.scalar_one_or_none()
 
-    async def get_all_sources(self, active_only: bool = True) -> list[Source]:
+    async def get_all_sources(
+        self, active_only: bool = True, channel_id: str | None = None
+    ) -> list[Source]:
         async with self.session() as session:
             query = select(Source)
             if active_only:
                 query = query.where(Source.is_active == True)  # noqa: E712
+            if channel_id is not None:
+                query = query.where(Source.channel_id == channel_id)
             result = await session.execute(query)
             return list(result.scalars().all())
 
