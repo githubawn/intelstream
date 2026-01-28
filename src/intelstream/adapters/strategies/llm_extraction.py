@@ -43,7 +43,6 @@ HTML:
 
 
 class LLMExtractionStrategy(DiscoveryStrategy):
-
     def __init__(
         self,
         anthropic_client: anthropic.AsyncAnthropic,
@@ -75,10 +74,7 @@ class LLMExtractionStrategy(DiscoveryStrategy):
         if cached and cached.content_hash == content_hash:
             try:
                 posts_data = json.loads(cached.posts_json)
-                posts = [
-                    DiscoveredPost(url=p["url"], title=p.get("title", ""))
-                    for p in posts_data
-                ]
+                posts = [DiscoveredPost(url=p["url"], title=p.get("title", "")) for p in posts_data]
                 logger.debug(
                     "Using cached LLM extraction",
                     url=url,
@@ -107,7 +103,9 @@ class LLMExtractionStrategy(DiscoveryStrategy):
     def _get_content_hash(self, html: str) -> str:
         soup = BeautifulSoup(html, "lxml")
 
-        for tag in soup.find_all(["script", "style", "nav", "header", "footer", "aside", "noscript"]):
+        for tag in soup.find_all(
+            ["script", "style", "nav", "header", "footer", "aside", "noscript"]
+        ):
             tag.decompose()
 
         main = soup.find("main") or soup.find("article") or soup.find(id="content") or soup.body
@@ -124,14 +122,10 @@ class LLMExtractionStrategy(DiscoveryStrategy):
         }
         try:
             if self._http_client:
-                response = await self._http_client.get(
-                    url, headers=headers, follow_redirects=True
-                )
+                response = await self._http_client.get(url, headers=headers, follow_redirects=True)
             else:
                 async with httpx.AsyncClient(timeout=30.0) as client:
-                    response = await client.get(
-                        url, headers=headers, follow_redirects=True
-                    )
+                    response = await client.get(url, headers=headers, follow_redirects=True)
             response.raise_for_status()
             return response.text
         except httpx.HTTPError as e:
@@ -197,9 +191,7 @@ class LLMExtractionStrategy(DiscoveryStrategy):
                 if not post_url.startswith(("http://", "https://")):
                     post_url = urljoin(base_url, post_url)
 
-                posts.append(
-                    DiscoveredPost(url=post_url, title=p.get("title", ""))
-                )
+                posts.append(DiscoveredPost(url=post_url, title=p.get("title", "")))
 
             return posts
 

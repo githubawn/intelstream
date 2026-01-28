@@ -52,16 +52,18 @@ class TestLLMExtractionStrategy:
         """
         llm_response = MagicMock()
         llm_response.content = [
-            MagicMock(text=json.dumps([
-                {"url": "https://example.com/post/1", "title": "Post 1"},
-                {"url": "https://example.com/post/2", "title": "Post 2"},
-            ]))
+            MagicMock(
+                text=json.dumps(
+                    [
+                        {"url": "https://example.com/post/1", "title": "Post 1"},
+                        {"url": "https://example.com/post/2", "title": "Post 2"},
+                    ]
+                )
+            )
         ]
         mock_anthropic_client.messages.create.return_value = llm_response
 
-        respx.get("https://example.com/blog").mock(
-            return_value=httpx.Response(200, text=html)
-        )
+        respx.get("https://example.com/blog").mock(return_value=httpx.Response(200, text=html))
 
         result = await llm_strategy.discover("https://example.com/blog")
 
@@ -83,9 +85,7 @@ class TestLLMExtractionStrategy:
 
         mock_repository.get_extraction_cache.return_value = cached
 
-        respx.get("https://example.com/").mock(
-            return_value=httpx.Response(200, text=html)
-        )
+        respx.get("https://example.com/").mock(return_value=httpx.Response(200, text=html))
 
         result = await llm_strategy.discover("https://example.com/")
 
@@ -105,9 +105,7 @@ class TestLLMExtractionStrategy:
         ]
         mock_anthropic_client.messages.create.return_value = llm_response
 
-        respx.get("https://example.com/").mock(
-            return_value=httpx.Response(200, text=html)
-        )
+        respx.get("https://example.com/").mock(return_value=httpx.Response(200, text=html))
 
         await llm_strategy.discover("https://example.com/")
 
@@ -120,13 +118,13 @@ class TestLLMExtractionStrategy:
         html = "<html><body>Content</body></html>"
         llm_response = MagicMock()
         llm_response.content = [
-            MagicMock(text='```json\n[{"url": "https://example.com/wrapped", "title": "Wrapped"}]\n```')
+            MagicMock(
+                text='```json\n[{"url": "https://example.com/wrapped", "title": "Wrapped"}]\n```'
+            )
         ]
         mock_anthropic_client.messages.create.return_value = llm_response
 
-        respx.get("https://example.com/").mock(
-            return_value=httpx.Response(200, text=html)
-        )
+        respx.get("https://example.com/").mock(return_value=httpx.Response(200, text=html))
 
         result = await llm_strategy.discover("https://example.com/")
 
@@ -140,14 +138,10 @@ class TestLLMExtractionStrategy:
     ):
         html = "<html><body>Content</body></html>"
         llm_response = MagicMock()
-        llm_response.content = [
-            MagicMock(text='[{"url": "/post/relative", "title": "Relative"}]')
-        ]
+        llm_response.content = [MagicMock(text='[{"url": "/post/relative", "title": "Relative"}]')]
         mock_anthropic_client.messages.create.return_value = llm_response
 
-        respx.get("https://example.com/blog").mock(
-            return_value=httpx.Response(200, text=html)
-        )
+        respx.get("https://example.com/blog").mock(return_value=httpx.Response(200, text=html))
 
         result = await llm_strategy.discover("https://example.com/blog")
 
@@ -163,9 +157,7 @@ class TestLLMExtractionStrategy:
         llm_response.content = [MagicMock(text="[]")]
         mock_anthropic_client.messages.create.return_value = llm_response
 
-        respx.get("https://example.com/").mock(
-            return_value=httpx.Response(200, text=html)
-        )
+        respx.get("https://example.com/").mock(return_value=httpx.Response(200, text=html))
 
         result = await llm_strategy.discover("https://example.com/")
 
@@ -188,9 +180,7 @@ class TestLLMExtractionStrategy:
         llm_response.content = [MagicMock(text="This is not JSON")]
         mock_anthropic_client.messages.create.return_value = llm_response
 
-        respx.get("https://example.com/").mock(
-            return_value=httpx.Response(200, text=html)
-        )
+        respx.get("https://example.com/").mock(return_value=httpx.Response(200, text=html))
 
         result = await llm_strategy.discover("https://example.com/")
 
@@ -201,12 +191,16 @@ class TestLLMExtractionStrategy:
         result = llm_strategy._extract_json_from_response(text)
         assert len(result) == 1
 
-    async def test_extract_json_from_response_with_markdown(self, llm_strategy: LLMExtractionStrategy):
+    async def test_extract_json_from_response_with_markdown(
+        self, llm_strategy: LLMExtractionStrategy
+    ):
         text = 'Here is the JSON:\n```json\n[{"url": "test", "title": "Test"}]\n```'
         result = llm_strategy._extract_json_from_response(text)
         assert len(result) == 1
 
-    async def test_extract_json_from_response_with_surrounding_text(self, llm_strategy: LLMExtractionStrategy):
+    async def test_extract_json_from_response_with_surrounding_text(
+        self, llm_strategy: LLMExtractionStrategy
+    ):
         text = 'Found these posts: [{"url": "test", "title": "Test"}] That\'s all.'
         result = llm_strategy._extract_json_from_response(text)
         assert len(result) == 1

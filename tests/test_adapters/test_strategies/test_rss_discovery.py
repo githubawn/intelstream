@@ -1,4 +1,3 @@
-
 import httpx
 import pytest
 import respx
@@ -96,7 +95,18 @@ class TestRSSDiscoveryStrategy:
 
         respx.get("https://example.com/").mock(return_value=httpx.Response(200, text=html))
 
-        for path in ["/feed", "/feed.xml", "/rss", "/rss.xml", "/atom.xml", "/blog/feed", "/blog/rss", "/research/feed", "/index.xml", "/feeds/posts/default"]:
+        for path in [
+            "/feed",
+            "/feed.xml",
+            "/rss",
+            "/rss.xml",
+            "/atom.xml",
+            "/blog/feed",
+            "/blog/rss",
+            "/research/feed",
+            "/index.xml",
+            "/feeds/posts/default",
+        ]:
             respx.head(f"https://example.com{path}").mock(return_value=httpx.Response(404))
 
         result = await rss_strategy.discover("https://example.com/")
@@ -129,7 +139,17 @@ class TestRSSDiscoveryStrategy:
             )
         )
 
-        for path in ["/feed", "/rss", "/rss.xml", "/atom.xml", "/blog/feed", "/blog/rss", "/research/feed", "/index.xml", "/feeds/posts/default"]:
+        for path in [
+            "/feed",
+            "/rss",
+            "/rss.xml",
+            "/atom.xml",
+            "/blog/feed",
+            "/blog/rss",
+            "/research/feed",
+            "/index.xml",
+            "/feeds/posts/default",
+        ]:
             respx.head(f"https://example.com{path}").mock(return_value=httpx.Response(404))
 
         result = await rss_strategy.discover("https://example.com/")

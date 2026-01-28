@@ -129,9 +129,7 @@ class SourceManagement(commands.Cog):
         discovered_url_pattern: str | None = None
 
         if stype == SourceType.BLOG:
-            anthropic_client = anthropic.AsyncAnthropic(
-                api_key=self.bot.settings.anthropic_api_key
-            )
+            anthropic_client = anthropic.AsyncAnthropic(api_key=self.bot.settings.anthropic_api_key)
             adapter = SmartBlogAdapter(
                 anthropic_client=anthropic_client,
                 repository=self.bot.repository,

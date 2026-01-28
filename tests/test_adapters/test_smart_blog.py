@@ -62,9 +62,7 @@ class TestSmartBlogAdapterAnalysis:
         assert result == "https://example.com/blog"
 
     @respx.mock
-    async def test_analyze_site_with_rss(
-        self, adapter: SmartBlogAdapter
-    ):
+    async def test_analyze_site_with_rss(self, adapter: SmartBlogAdapter):
         html = """
         <html><head>
         <link rel="alternate" type="application/rss+xml" href="/feed.xml">
@@ -78,7 +76,9 @@ class TestSmartBlogAdapterAnalysis:
 
         respx.get("https://example.com/blog").mock(return_value=httpx.Response(200, text=html))
         respx.get("https://example.com/feed.xml").mock(
-            return_value=httpx.Response(200, text=rss, headers={"content-type": "application/rss+xml"})
+            return_value=httpx.Response(
+                200, text=rss, headers={"content-type": "application/rss+xml"}
+            )
         )
 
         result = await adapter.analyze_site("https://example.com/blog")
@@ -99,7 +99,18 @@ class TestSmartBlogAdapterAnalysis:
         """
 
         respx.get("https://example.com/blog").mock(return_value=httpx.Response(200, text=html))
-        for path in ["/feed", "/feed.xml", "/rss", "/rss.xml", "/atom.xml", "/blog/feed", "/blog/rss", "/research/feed", "/index.xml", "/feeds/posts/default"]:
+        for path in [
+            "/feed",
+            "/feed.xml",
+            "/rss",
+            "/rss.xml",
+            "/atom.xml",
+            "/blog/feed",
+            "/blog/rss",
+            "/research/feed",
+            "/index.xml",
+            "/feeds/posts/default",
+        ]:
             respx.head(f"https://example.com{path}").mock(return_value=httpx.Response(404))
 
         respx.get("https://example.com/robots.txt").mock(return_value=httpx.Response(404))
@@ -116,7 +127,9 @@ class TestSmartBlogAdapterAnalysis:
     async def test_analyze_site_failure(self, adapter: SmartBlogAdapter):
         with (
             patch.object(adapter._strategies[0], "discover", new_callable=AsyncMock) as mock_rss,
-            patch.object(adapter._strategies[1], "discover", new_callable=AsyncMock) as mock_sitemap,
+            patch.object(
+                adapter._strategies[1], "discover", new_callable=AsyncMock
+            ) as mock_sitemap,
             patch.object(adapter._strategies[2], "discover", new_callable=AsyncMock) as mock_llm,
         ):
             mock_rss.return_value = None
@@ -130,9 +143,7 @@ class TestSmartBlogAdapterAnalysis:
 
 
 class TestSmartBlogAdapterFetchLatest:
-    async def test_fetch_latest_source_not_found(
-        self, adapter: SmartBlogAdapter, mock_repository
-    ):
+    async def test_fetch_latest_source_not_found(self, adapter: SmartBlogAdapter, mock_repository):
         mock_repository.get_source_by_identifier.return_value = None
 
         result = await adapter.fetch_latest("https://unknown.com/")
@@ -160,7 +171,9 @@ class TestSmartBlogAdapterFetchLatest:
         sample_source.feed_url = None
         mock_repository.get_source_by_identifier.return_value = sample_source
 
-        with patch.object(adapter, "_discover_with_fallback", new_callable=AsyncMock) as mock_discover:
+        with patch.object(
+            adapter, "_discover_with_fallback", new_callable=AsyncMock
+        ) as mock_discover:
             mock_discover.return_value = None
 
             await adapter.fetch_latest(sample_source.identifier)
@@ -180,8 +193,12 @@ class TestSmartBlogAdapterFetchLatest:
         )
 
         with (
-            patch.object(adapter, "_discover_with_fallback", new_callable=AsyncMock) as mock_discover,
-            patch.object(adapter._content_extractor, "extract", new_callable=AsyncMock) as mock_extract,
+            patch.object(
+                adapter, "_discover_with_fallback", new_callable=AsyncMock
+            ) as mock_discover,
+            patch.object(
+                adapter._content_extractor, "extract", new_callable=AsyncMock
+            ) as mock_extract,
         ):
             mock_discover.return_value = discovery_result
             mock_extract.return_value = MagicMock(
@@ -212,8 +229,12 @@ class TestSmartBlogAdapterFetchLatest:
         )
 
         with (
-            patch.object(adapter, "_discover_with_fallback", new_callable=AsyncMock) as mock_discover,
-            patch.object(adapter._content_extractor, "extract", new_callable=AsyncMock) as mock_extract,
+            patch.object(
+                adapter, "_discover_with_fallback", new_callable=AsyncMock
+            ) as mock_discover,
+            patch.object(
+                adapter._content_extractor, "extract", new_callable=AsyncMock
+            ) as mock_extract,
         ):
             mock_discover.return_value = discovery_result
             mock_extract.return_value = MagicMock(
@@ -253,7 +274,9 @@ class TestSmartBlogAdapterFallback:
     ):
         with (
             patch.object(adapter._strategies[0], "discover", new_callable=AsyncMock) as mock_rss,
-            patch.object(adapter._strategies[1], "discover", new_callable=AsyncMock) as mock_sitemap,
+            patch.object(
+                adapter._strategies[1], "discover", new_callable=AsyncMock
+            ) as mock_sitemap,
         ):
             mock_rss.return_value = None
             mock_sitemap.return_value = DiscoveryResult(

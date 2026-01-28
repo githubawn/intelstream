@@ -47,7 +47,9 @@ class TestSitemapDiscoveryStrategy:
         assert result.posts[0].url == "https://example.com/blog/post-1"
 
     @respx.mock
-    async def test_discover_with_robots_txt_sitemap(self, sitemap_strategy: SitemapDiscoveryStrategy):
+    async def test_discover_with_robots_txt_sitemap(
+        self, sitemap_strategy: SitemapDiscoveryStrategy
+    ):
         robots_txt = """
         User-agent: *
         Disallow: /private/
@@ -123,7 +125,9 @@ class TestSitemapDiscoveryStrategy:
         assert len(result.posts) == 2
 
     @respx.mock
-    async def test_discover_returns_none_when_no_sitemap(self, sitemap_strategy: SitemapDiscoveryStrategy):
+    async def test_discover_returns_none_when_no_sitemap(
+        self, sitemap_strategy: SitemapDiscoveryStrategy
+    ):
         respx.get("https://example.com/robots.txt").mock(return_value=httpx.Response(404))
         respx.get("https://example.com/sitemap.xml").mock(return_value=httpx.Response(404))
         respx.get("https://example.com/sitemap_index.xml").mock(return_value=httpx.Response(404))
@@ -135,7 +139,9 @@ class TestSitemapDiscoveryStrategy:
         assert result is None
 
     @respx.mock
-    async def test_discover_infers_pattern_from_url(self, sitemap_strategy: SitemapDiscoveryStrategy):
+    async def test_discover_infers_pattern_from_url(
+        self, sitemap_strategy: SitemapDiscoveryStrategy
+    ):
         sitemap = """<?xml version="1.0"?>
         <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
             <url><loc>https://example.com/news/item-1</loc></url>
@@ -176,7 +182,9 @@ class TestSitemapDiscoveryStrategy:
         assert result.posts[0].url == "https://example.com/updates/b"
 
     @respx.mock
-    async def test_discover_handles_no_matching_pattern(self, sitemap_strategy: SitemapDiscoveryStrategy):
+    async def test_discover_handles_no_matching_pattern(
+        self, sitemap_strategy: SitemapDiscoveryStrategy
+    ):
         sitemap = """<?xml version="1.0"?>
         <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
             <url><loc>https://example.com/page1</loc></url>

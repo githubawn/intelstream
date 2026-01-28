@@ -42,7 +42,6 @@ SITEMAP_NS = {
 
 
 class SitemapDiscoveryStrategy(DiscoveryStrategy):
-
     def __init__(self, http_client: httpx.AsyncClient | None = None) -> None:
         self._client = http_client
 
@@ -74,14 +73,9 @@ class SitemapDiscoveryStrategy(DiscoveryStrategy):
             logger.debug("Could not infer URL pattern from sitemap", url=url)
             return None
 
-        post_urls = [
-            u for u in all_urls
-            if isinstance(u["url"], str) and url_pattern in u["url"]
-        ]
+        post_urls = [u for u in all_urls if isinstance(u["url"], str) and url_pattern in u["url"]]
         if not post_urls:
-            logger.debug(
-                "No URLs match pattern in sitemap", url=url, pattern=url_pattern
-            )
+            logger.debug("No URLs match pattern in sitemap", url=url, pattern=url_pattern)
             return None
 
         posts = []
@@ -90,9 +84,7 @@ class SitemapDiscoveryStrategy(DiscoveryStrategy):
             lastmod = u.get("lastmod")
             if isinstance(url_str, str):
                 published = lastmod if isinstance(lastmod, datetime) else None
-                posts.append(
-                    DiscoveredPost(url=url_str, title="", published_at=published)
-                )
+                posts.append(DiscoveredPost(url=url_str, title="", published_at=published))
 
         logger.info(
             "Sitemap discovery successful",
@@ -214,9 +206,7 @@ class SitemapDiscoveryStrategy(DiscoveryStrategy):
 
         return all_urls[:MAX_SITEMAP_URLS]
 
-    def _parse_urlset(
-        self, root: ElementTree.Element
-    ) -> list[dict[str, str | datetime | None]]:
+    def _parse_urlset(self, root: ElementTree.Element) -> list[dict[str, str | datetime | None]]:
         urls: list[dict[str, str | datetime | None]] = []
 
         for url_elem in root.findall("sm:url", SITEMAP_NS):
@@ -224,7 +214,9 @@ class SitemapDiscoveryStrategy(DiscoveryStrategy):
             lastmod_elem = url_elem.find("sm:lastmod", SITEMAP_NS)
 
             if loc is not None and loc.text:
-                lastmod = self._parse_lastmod(lastmod_elem.text if lastmod_elem is not None else None)
+                lastmod = self._parse_lastmod(
+                    lastmod_elem.text if lastmod_elem is not None else None
+                )
                 urls.append({"url": loc.text, "lastmod": lastmod})
 
         for url_elem in root.findall("url"):
@@ -232,7 +224,9 @@ class SitemapDiscoveryStrategy(DiscoveryStrategy):
             lastmod_elem = url_elem.find("lastmod")
 
             if loc is not None and loc.text:
-                lastmod = self._parse_lastmod(lastmod_elem.text if lastmod_elem is not None else None)
+                lastmod = self._parse_lastmod(
+                    lastmod_elem.text if lastmod_elem is not None else None
+                )
                 urls.append({"url": loc.text, "lastmod": lastmod})
 
         return urls

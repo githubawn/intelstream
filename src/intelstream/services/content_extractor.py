@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 import httpx
 import structlog
 import trafilatura
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 
 logger = structlog.get_logger()
 
@@ -20,7 +20,6 @@ class ExtractedContent:
 
 
 class ContentExtractor:
-
     def __init__(self, http_client: httpx.AsyncClient | None = None) -> None:
         self._client = http_client
 
@@ -78,14 +77,10 @@ class ContentExtractor:
         }
         try:
             if self._client:
-                response = await self._client.get(
-                    url, headers=headers, follow_redirects=True
-                )
+                response = await self._client.get(url, headers=headers, follow_redirects=True)
             else:
                 async with httpx.AsyncClient(timeout=30.0) as client:
-                    response = await client.get(
-                        url, headers=headers, follow_redirects=True
-                    )
+                    response = await client.get(url, headers=headers, follow_redirects=True)
             response.raise_for_status()
             return response.text
         except httpx.HTTPError as e:
@@ -94,7 +89,7 @@ class ContentExtractor:
 
     def _extract_title(self, soup: BeautifulSoup) -> str | None:
         og_title = soup.find("meta", property="og:title")
-        if og_title:
+        if isinstance(og_title, Tag):
             content = og_title.get("content")
             if content:
                 return str(content)
@@ -111,13 +106,13 @@ class ContentExtractor:
 
     def _extract_author(self, soup: BeautifulSoup) -> str | None:
         author_meta = soup.find("meta", attrs={"name": "author"})
-        if author_meta:
+        if isinstance(author_meta, Tag):
             content = author_meta.get("content")
             if content:
                 return str(content)
 
         og_author = soup.find("meta", property="article:author")
-        if og_author:
+        if isinstance(og_author, Tag):
             content = og_author.get("content")
             if content:
                 return str(content)
@@ -132,7 +127,7 @@ class ContentExtractor:
 
     def _extract_date(self, soup: BeautifulSoup) -> datetime | None:
         time_elem = soup.find("time")
-        if time_elem:
+        if isinstance(time_elem, Tag):
             datetime_attr = time_elem.get("datetime")
             if datetime_attr:
                 parsed = self._parse_date(str(datetime_attr))
@@ -140,7 +135,7 @@ class ContentExtractor:
                     return parsed
 
         og_date = soup.find("meta", property="article:published_time")
-        if og_date:
+        if isinstance(og_date, Tag):
             content = og_date.get("content")
             if content:
                 parsed = self._parse_date(str(content))
@@ -148,7 +143,7 @@ class ContentExtractor:
                     return parsed
 
         date_meta = soup.find("meta", attrs={"name": re.compile(r"date", re.IGNORECASE)})
-        if date_meta:
+        if isinstance(date_meta, Tag):
             content = date_meta.get("content")
             if content:
                 parsed = self._parse_date(str(content))

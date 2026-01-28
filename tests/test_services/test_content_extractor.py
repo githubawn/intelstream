@@ -1,4 +1,3 @@
-
 import httpx
 import pytest
 import respx
@@ -31,9 +30,7 @@ class TestContentExtractor:
         </html>
         """
 
-        respx.get("https://example.com/article").mock(
-            return_value=httpx.Response(200, text=html)
-        )
+        respx.get("https://example.com/article").mock(return_value=httpx.Response(200, text=html))
 
         result = await extractor.extract("https://example.com/article")
 
@@ -56,9 +53,7 @@ class TestContentExtractor:
         </html>
         """
 
-        respx.get("https://example.com/page").mock(
-            return_value=httpx.Response(200, text=html)
-        )
+        respx.get("https://example.com/page").mock(return_value=httpx.Response(200, text=html))
 
         result = await extractor.extract("https://example.com/page")
 
@@ -77,9 +72,7 @@ class TestContentExtractor:
         </html>
         """
 
-        respx.get("https://example.com/").mock(
-            return_value=httpx.Response(200, text=html)
-        )
+        respx.get("https://example.com/").mock(return_value=httpx.Response(200, text=html))
 
         result = await extractor.extract("https://example.com/")
 
@@ -96,9 +89,7 @@ class TestContentExtractor:
         </html>
         """
 
-        respx.get("https://example.com/").mock(
-            return_value=httpx.Response(200, text=html)
-        )
+        respx.get("https://example.com/").mock(return_value=httpx.Response(200, text=html))
 
         result = await extractor.extract("https://example.com/")
 
@@ -115,9 +106,7 @@ class TestContentExtractor:
         </html>
         """
 
-        respx.get("https://example.com/").mock(
-            return_value=httpx.Response(200, text=html)
-        )
+        respx.get("https://example.com/").mock(return_value=httpx.Response(200, text=html))
 
         result = await extractor.extract("https://example.com/")
 

@@ -57,9 +57,7 @@ class ContentPipeline:
                 http_client=self._http_client,
             )
 
-        anthropic_client = anthropic.AsyncAnthropic(
-            api_key=self._settings.anthropic_api_key
-        )
+        anthropic_client = anthropic.AsyncAnthropic(api_key=self._settings.anthropic_api_key)
         adapters[SourceType.BLOG] = SmartBlogAdapter(
             anthropic_client=anthropic_client,
             repository=self._repository,

@@ -34,7 +34,6 @@ class AnalysisResult:
 
 
 class SmartBlogAdapter(BaseAdapter):
-
     def __init__(
         self,
         anthropic_client: anthropic.AsyncAnthropic,
@@ -112,9 +111,7 @@ class SmartBlogAdapter(BaseAdapter):
                 await self._repository.reset_failure_count(source.id)
             return items
 
-        result = await self._discover_with_fallback(
-            identifier, strategy_name, url_pattern, source
-        )
+        result = await self._discover_with_fallback(identifier, strategy_name, url_pattern, source)
 
         if not result or not result.posts:
             failures = await self._repository.increment_failure_count(source.id)
@@ -154,7 +151,9 @@ class SmartBlogAdapter(BaseAdapter):
                         title=post.title or extracted.title or "Untitled",
                         original_url=post.url,
                         author=extracted.author or self._get_site_name(identifier),
-                        published_at=post.published_at or extracted.published_at or datetime.now(UTC),
+                        published_at=post.published_at
+                        or extracted.published_at
+                        or datetime.now(UTC),
                         raw_content=extracted.text or None,
                         thumbnail_url=None,
                     )

@@ -31,7 +31,6 @@ RSS_PATHS = [
 
 
 class RSSDiscoveryStrategy(DiscoveryStrategy):
-
     def __init__(self, http_client: httpx.AsyncClient | None = None) -> None:
         self._client = http_client
 
@@ -179,9 +178,7 @@ class RSSDiscoveryStrategy(DiscoveryStrategy):
                 title = str(entry.get("title", ""))
                 published_at = self._parse_date(entry)
 
-                posts.append(
-                    DiscoveredPost(url=post_url, title=title, published_at=published_at)
-                )
+                posts.append(DiscoveredPost(url=post_url, title=title, published_at=published_at))
 
             return posts if posts else None
 
