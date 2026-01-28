@@ -149,7 +149,11 @@ class LLMExtractionStrategy(DiscoveryStrategy):
         cleaned = str(soup)
 
         if len(cleaned) > MAX_HTML_LENGTH:
-            cleaned = cleaned[:MAX_HTML_LENGTH]
+            truncated = cleaned[:MAX_HTML_LENGTH]
+            last_close = truncated.rfind(">")
+            if last_close > MAX_HTML_LENGTH - 1000:
+                truncated = truncated[: last_close + 1]
+            cleaned = truncated
 
         return cleaned
 

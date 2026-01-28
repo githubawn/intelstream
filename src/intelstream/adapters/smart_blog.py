@@ -20,6 +20,7 @@ from intelstream.services.content_extractor import ContentExtractor
 logger = structlog.get_logger()
 
 MAX_CONSECUTIVE_FAILURES = 3
+UNKNOWN_DATE = datetime(1970, 1, 1, tzinfo=UTC)
 
 
 @dataclass
@@ -151,9 +152,7 @@ class SmartBlogAdapter(BaseAdapter):
                         title=post.title or extracted.title or "Untitled",
                         original_url=post.url,
                         author=extracted.author or self._get_site_name(identifier),
-                        published_at=post.published_at
-                        or extracted.published_at
-                        or datetime.now(UTC),
+                        published_at=post.published_at or extracted.published_at or UNKNOWN_DATE,
                         raw_content=extracted.text or None,
                         thumbnail_url=None,
                     )
