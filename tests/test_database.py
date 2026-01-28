@@ -623,18 +623,24 @@ class TestForwardingRuleOperations:
             destination_type="thread",
         )
 
-        updated = await repository.set_forwarding_rule_active("guild-123", "source-456", "dest-789", False)
+        updated = await repository.set_forwarding_rule_active(
+            "guild-123", "source-456", "dest-789", False
+        )
         assert updated is True
 
         rules = await repository.get_forwarding_rules_for_guild("guild-123")
         assert len(rules) == 1
         assert rules[0].is_active is False
 
-        updated = await repository.set_forwarding_rule_active("guild-123", "source-456", "dest-789", True)
+        updated = await repository.set_forwarding_rule_active(
+            "guild-123", "source-456", "dest-789", True
+        )
         assert updated is True
 
         rules = await repository.get_forwarding_rules_for_guild("guild-123")
         assert rules[0].is_active is True
 
-        not_found = await repository.set_forwarding_rule_active("guild-123", "nonexistent", "dest-789", False)
+        not_found = await repository.set_forwarding_rule_active(
+            "guild-123", "nonexistent", "dest-789", False
+        )
         assert not_found is False

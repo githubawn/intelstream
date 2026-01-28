@@ -414,12 +414,15 @@ class Repository:
                 rule.last_forwarded_at = datetime.now(UTC)
                 await session.commit()
 
-    async def delete_forwarding_rule(self, guild_id: str, source_channel_id: str) -> bool:
+    async def delete_forwarding_rule(
+        self, guild_id: str, source_channel_id: str, destination_channel_id: str
+    ) -> bool:
         async with self.session() as session:
             result = await session.execute(
                 select(ForwardingRule)
                 .where(ForwardingRule.guild_id == guild_id)
                 .where(ForwardingRule.source_channel_id == source_channel_id)
+                .where(ForwardingRule.destination_channel_id == destination_channel_id)
             )
             rule = result.scalar_one_or_none()
             if rule:
@@ -429,13 +432,14 @@ class Repository:
             return False
 
     async def set_forwarding_rule_active(
-        self, guild_id: str, source_channel_id: str, is_active: bool
+        self, guild_id: str, source_channel_id: str, destination_channel_id: str, is_active: bool
     ) -> bool:
         async with self.session() as session:
             result = await session.execute(
                 select(ForwardingRule)
                 .where(ForwardingRule.guild_id == guild_id)
                 .where(ForwardingRule.source_channel_id == source_channel_id)
+                .where(ForwardingRule.destination_channel_id == destination_channel_id)
             )
             rule = result.scalar_one_or_none()
             if rule:

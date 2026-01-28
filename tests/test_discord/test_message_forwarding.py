@@ -207,14 +207,21 @@ class TestForwardRemove:
         mock_source.id = 111
         mock_source.mention = "#source"
 
+        mock_dest = MagicMock(spec=discord.Thread)
+        mock_dest.id = 222
+        mock_dest.mention = "#dest"
+
         mock_bot.repository.delete_forwarding_rule = AsyncMock(return_value=True)
         mock_bot.repository.get_forwarding_rules_for_guild = AsyncMock(return_value=[])
 
-        await cog.forward_remove.callback(cog, interaction, source=mock_source)
+        await cog.forward_remove.callback(
+            cog, interaction, source=mock_source, destination=mock_dest
+        )
 
         mock_bot.repository.delete_forwarding_rule.assert_called_once_with(
             guild_id="456",
             source_channel_id="111",
+            destination_channel_id="222",
         )
 
         call_args = interaction.followup.send.call_args
@@ -233,9 +240,15 @@ class TestForwardRemove:
         mock_source.id = 999
         mock_source.mention = "#unknown"
 
+        mock_dest = MagicMock(spec=discord.Thread)
+        mock_dest.id = 888
+        mock_dest.mention = "#dest"
+
         mock_bot.repository.delete_forwarding_rule = AsyncMock(return_value=False)
 
-        await cog.forward_remove.callback(cog, interaction, source=mock_source)
+        await cog.forward_remove.callback(
+            cog, interaction, source=mock_source, destination=mock_dest
+        )
 
         call_args = interaction.followup.send.call_args
         assert "No forwarding rule found" in call_args[0][0]
@@ -257,14 +270,21 @@ class TestForwardPauseResume:
         mock_source.id = 111
         mock_source.mention = "#source"
 
+        mock_dest = MagicMock(spec=discord.Thread)
+        mock_dest.id = 222
+        mock_dest.mention = "#dest"
+
         mock_bot.repository.set_forwarding_rule_active = AsyncMock(return_value=True)
         mock_bot.repository.get_forwarding_rules_for_guild = AsyncMock(return_value=[])
 
-        await cog.forward_pause.callback(cog, interaction, source=mock_source)
+        await cog.forward_pause.callback(
+            cog, interaction, source=mock_source, destination=mock_dest
+        )
 
         mock_bot.repository.set_forwarding_rule_active.assert_called_once_with(
             guild_id="456",
             source_channel_id="111",
+            destination_channel_id="222",
             is_active=False,
         )
 
@@ -286,14 +306,21 @@ class TestForwardPauseResume:
         mock_source.id = 111
         mock_source.mention = "#source"
 
+        mock_dest = MagicMock(spec=discord.Thread)
+        mock_dest.id = 222
+        mock_dest.mention = "#dest"
+
         mock_bot.repository.set_forwarding_rule_active = AsyncMock(return_value=True)
         mock_bot.repository.get_forwarding_rules_for_guild = AsyncMock(return_value=[])
 
-        await cog.forward_resume.callback(cog, interaction, source=mock_source)
+        await cog.forward_resume.callback(
+            cog, interaction, source=mock_source, destination=mock_dest
+        )
 
         mock_bot.repository.set_forwarding_rule_active.assert_called_once_with(
             guild_id="456",
             source_channel_id="111",
+            destination_channel_id="222",
             is_active=True,
         )
 
@@ -313,9 +340,15 @@ class TestForwardPauseResume:
         mock_source.id = 999
         mock_source.mention = "#unknown"
 
+        mock_dest = MagicMock(spec=discord.Thread)
+        mock_dest.id = 888
+        mock_dest.mention = "#dest"
+
         mock_bot.repository.set_forwarding_rule_active = AsyncMock(return_value=False)
 
-        await cog.forward_pause.callback(cog, interaction, source=mock_source)
+        await cog.forward_pause.callback(
+            cog, interaction, source=mock_source, destination=mock_dest
+        )
 
         call_args = interaction.followup.send.call_args
         assert "No forwarding rule found" in call_args[0][0]

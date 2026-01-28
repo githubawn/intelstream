@@ -130,6 +130,36 @@ A Discord bot that monitors content sources and posts AI-generated summaries to 
 |---------|-------------|
 | `/summarize url:<url>` | Get an AI summary of any URL (YouTube, Substack, or web page) |
 
+#### Message Forwarding
+
+Forward messages from one channel to another. Useful for routing followed announcement channels into organized threads.
+
+| Command | Description |
+|---------|-------------|
+| `/forward add source:#channel destination:#thread` | Create a forwarding rule |
+| `/forward list` | List all forwarding rules with message counts |
+| `/forward remove source:#channel destination:#thread` | Remove a forwarding rule |
+| `/forward pause source:#channel destination:#thread` | Temporarily pause forwarding |
+| `/forward resume source:#channel destination:#thread` | Resume paused forwarding |
+
+**Use case**: Discord's native "Follow" feature only forwards announcement channel messages to channels, not threads. Use message forwarding to route those messages into a thread for better organization:
+
+```
+External Server (OpenAI Announcements)
+    │ (Discord native "Follow")
+    ▼
+Your Server: #announcement-intake
+    │ (Bot forwards)
+    ▼
+Your Server: #announcements → "AI News" thread
+```
+
+**Features**:
+- Preserves embeds and attachments from original messages
+- Automatically unarchives archived destination threads
+- Skips attachments that exceed the server's file size limit
+- Supports multiple forwarding rules from the same source to different destinations
+
 ### How It Works
 
 1. **Polling**: The bot periodically checks all active sources for new content

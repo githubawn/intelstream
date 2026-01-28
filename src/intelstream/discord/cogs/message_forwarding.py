@@ -171,12 +171,16 @@ class MessageForwarding(commands.Cog):
         await interaction.followup.send("\n".join(lines), ephemeral=True)
 
     @forward_group.command(name="remove", description="Remove a forwarding rule")
-    @app_commands.describe(source="Source channel to stop forwarding from")
+    @app_commands.describe(
+        source="Source channel to stop forwarding from",
+        destination="Destination channel/thread to stop forwarding to",
+    )
     @app_commands.default_permissions(administrator=True)
     async def forward_remove(
         self,
         interaction: discord.Interaction,
         source: discord.TextChannel | discord.Thread,
+        destination: discord.TextChannel | discord.Thread,
     ) -> None:
         await interaction.response.defer(ephemeral=True)
 
@@ -189,6 +193,7 @@ class MessageForwarding(commands.Cog):
         deleted = await self.bot.repository.delete_forwarding_rule(
             guild_id=str(interaction.guild_id),
             source_channel_id=str(source.id),
+            destination_channel_id=str(destination.id),
         )
 
         if deleted:
@@ -196,23 +201,30 @@ class MessageForwarding(commands.Cog):
             logger.info(
                 "Forwarding rule removed",
                 source_id=source.id,
+                destination_id=destination.id,
                 user_id=interaction.user.id,
             )
             await interaction.followup.send(
-                f"Forwarding rule for {source.mention} removed.", ephemeral=True
+                f"Forwarding rule {source.mention} -> {destination.mention} removed.",
+                ephemeral=True,
             )
         else:
             await interaction.followup.send(
-                f"No forwarding rule found for {source.mention}.", ephemeral=True
+                f"No forwarding rule found from {source.mention} to {destination.mention}.",
+                ephemeral=True,
             )
 
     @forward_group.command(name="pause", description="Pause a forwarding rule")
-    @app_commands.describe(source="Source channel to pause forwarding from")
+    @app_commands.describe(
+        source="Source channel to pause forwarding from",
+        destination="Destination channel/thread to pause forwarding to",
+    )
     @app_commands.default_permissions(administrator=True)
     async def forward_pause(
         self,
         interaction: discord.Interaction,
         source: discord.TextChannel | discord.Thread,
+        destination: discord.TextChannel | discord.Thread,
     ) -> None:
         await interaction.response.defer(ephemeral=True)
 
@@ -225,6 +237,7 @@ class MessageForwarding(commands.Cog):
         updated = await self.bot.repository.set_forwarding_rule_active(
             guild_id=str(interaction.guild_id),
             source_channel_id=str(source.id),
+            destination_channel_id=str(destination.id),
             is_active=False,
         )
 
@@ -233,23 +246,30 @@ class MessageForwarding(commands.Cog):
             logger.info(
                 "Forwarding rule paused",
                 source_id=source.id,
+                destination_id=destination.id,
                 user_id=interaction.user.id,
             )
             await interaction.followup.send(
-                f"Forwarding from {source.mention} paused.", ephemeral=True
+                f"Forwarding {source.mention} -> {destination.mention} paused.",
+                ephemeral=True,
             )
         else:
             await interaction.followup.send(
-                f"No forwarding rule found for {source.mention}.", ephemeral=True
+                f"No forwarding rule found from {source.mention} to {destination.mention}.",
+                ephemeral=True,
             )
 
     @forward_group.command(name="resume", description="Resume a paused forwarding rule")
-    @app_commands.describe(source="Source channel to resume forwarding from")
+    @app_commands.describe(
+        source="Source channel to resume forwarding from",
+        destination="Destination channel/thread to resume forwarding to",
+    )
     @app_commands.default_permissions(administrator=True)
     async def forward_resume(
         self,
         interaction: discord.Interaction,
         source: discord.TextChannel | discord.Thread,
+        destination: discord.TextChannel | discord.Thread,
     ) -> None:
         await interaction.response.defer(ephemeral=True)
 
@@ -262,6 +282,7 @@ class MessageForwarding(commands.Cog):
         updated = await self.bot.repository.set_forwarding_rule_active(
             guild_id=str(interaction.guild_id),
             source_channel_id=str(source.id),
+            destination_channel_id=str(destination.id),
             is_active=True,
         )
 
@@ -270,14 +291,17 @@ class MessageForwarding(commands.Cog):
             logger.info(
                 "Forwarding rule resumed",
                 source_id=source.id,
+                destination_id=destination.id,
                 user_id=interaction.user.id,
             )
             await interaction.followup.send(
-                f"Forwarding from {source.mention} resumed.", ephemeral=True
+                f"Forwarding {source.mention} -> {destination.mention} resumed.",
+                ephemeral=True,
             )
         else:
             await interaction.followup.send(
-                f"No forwarding rule found for {source.mention}.", ephemeral=True
+                f"No forwarding rule found from {source.mention} to {destination.mention}.",
+                ephemeral=True,
             )
 
 
