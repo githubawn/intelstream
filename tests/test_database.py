@@ -77,6 +77,36 @@ class TestSourceOperations:
         sources = await repository.get_all_sources()
         assert len(sources) == 2
 
+    async def test_get_all_sources_filtered_by_channel(self, repository: Repository) -> None:
+        await repository.add_source(
+            source_type=SourceType.SUBSTACK,
+            name="Channel A Source",
+            identifier="source-a",
+            channel_id="channel-a",
+        )
+        await repository.add_source(
+            source_type=SourceType.YOUTUBE,
+            name="Channel B Source",
+            identifier="source-b",
+            channel_id="channel-b",
+        )
+        await repository.add_source(
+            source_type=SourceType.RSS,
+            name="No Channel Source",
+            identifier="source-none",
+        )
+
+        sources_a = await repository.get_all_sources(channel_id="channel-a")
+        assert len(sources_a) == 1
+        assert sources_a[0].name == "Channel A Source"
+
+        sources_b = await repository.get_all_sources(channel_id="channel-b")
+        assert len(sources_b) == 1
+        assert sources_b[0].name == "Channel B Source"
+
+        all_sources = await repository.get_all_sources()
+        assert len(all_sources) == 3
+
     async def test_set_source_active(self, repository: Repository) -> None:
         await repository.add_source(
             source_type=SourceType.RSS,

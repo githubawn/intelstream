@@ -227,18 +227,21 @@ class SourceManagement(commands.Cog):
 
         await interaction.followup.send(embed=embed, ephemeral=True)
 
-    @source_group.command(name="list", description="List all configured sources")
+    @source_group.command(name="list", description="List sources for this channel")
     async def source_list(self, interaction: discord.Interaction) -> None:
         await interaction.response.defer()
 
-        sources = await self.bot.repository.get_all_sources(active_only=False)
+        channel_id = str(interaction.channel_id)
+        sources = await self.bot.repository.get_all_sources(
+            active_only=False, channel_id=channel_id
+        )
 
         if not sources:
-            await interaction.followup.send("No sources configured.")
+            await interaction.followup.send("No sources configured for this channel.")
             return
 
         embed = discord.Embed(
-            title="Configured Sources",
+            title="Sources for This Channel",
             color=discord.Color.blue(),
         )
 
@@ -249,10 +252,9 @@ class SourceManagement(commands.Cog):
                 if source.last_polled_at
                 else "Never"
             )
-            channel_info = f"<#{source.channel_id}>" if source.channel_id else "Not set"
             embed.add_field(
                 name=f"{'[ON]' if source.is_active else '[OFF]'} {source.name}",
-                value=f"**Type:** {source.type.value}\n**Channel:** {channel_info}\n**Status:** {status}\n**Last Poll:** {last_poll}",
+                value=f"**Type:** {source.type.value}\n**Status:** {status}\n**Last Poll:** {last_poll}",
                 inline=True,
             )
 
