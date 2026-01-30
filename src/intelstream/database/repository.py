@@ -338,12 +338,14 @@ class Repository:
                 if config:
                     config.channel_id = channel_id
                     await session.commit()
+                    await session.refresh(config)
                     return config
 
                 config = DiscordConfig(guild_id=guild_id, channel_id=channel_id)
                 session.add(config)
                 try:
                     await session.commit()
+                    await session.refresh(config)
                     return config
                 except IntegrityError:
                     await session.rollback()
