@@ -73,10 +73,11 @@ class ContentPipeline:
         fetch_delay = self._settings.fetch_delay_seconds
 
         for i, source in enumerate(sources):
+            fetch_succeeded = False
             try:
                 new_items = await self._fetch_source(source)
                 total_new_items += new_items
-                await self._repository.reset_failure_count(source.id)
+                fetch_succeeded = True
             except httpx.TimeoutException:
                 logger.warning(
                     "Source fetch timed out",
@@ -92,6 +93,13 @@ class ContentPipeline:
                         source_name=source.name,
                         source_type=source.type.value,
                     )
+                elif status == 429:
+                    logger.warning(
+                        "Rate limited by source",
+                        source_name=source.name,
+                        source_type=source.type.value,
+                    )
+                    await self._repository.increment_failure_count(source.id)
                 elif status >= 500:
                     logger.warning(
                         "Server error fetching source",
@@ -122,6 +130,9 @@ class ContentPipeline:
                     source_type=source.type.value,
                     error=str(e),
                 )
+
+            if fetch_succeeded:
+                await self._repository.reset_failure_count(source.id)
 
             if fetch_delay > 0 and i < len(sources) - 1:
                 await asyncio.sleep(fetch_delay)
