@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import select, text
+from sqlalchemy import exists, select, text
 from sqlalchemy.ext.asyncio import (
     AsyncConnection,
     AsyncSession,
@@ -218,7 +218,11 @@ class Repository:
             return result.scalar_one_or_none()
 
     async def content_item_exists(self, external_id: str) -> bool:
-        return await self.get_content_item_by_external_id(external_id) is not None
+        async with self.session() as session:
+            result = await session.execute(
+                select(exists().where(ContentItem.external_id == external_id))
+            )
+            return result.scalar_one()
 
     async def get_unposted_content_items(self) -> list[ContentItem]:
         async with self.session() as session:
