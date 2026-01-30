@@ -18,6 +18,10 @@ if TYPE_CHECKING:
 logger = structlog.get_logger()
 
 
+class InvalidSourceURLError(ValueError):
+    pass
+
+
 def parse_source_identifier(source_type: SourceType, url: str) -> tuple[str, str | None]:
     parsed = urlparse(url)
 
@@ -25,8 +29,14 @@ def parse_source_identifier(source_type: SourceType, url: str) -> tuple[str, str
         host = parsed.netloc.lower()
         if host.endswith(".substack.com"):
             identifier = host.replace(".substack.com", "")
+            if not identifier or identifier == "www":
+                raise InvalidSourceURLError(
+                    f"Invalid Substack URL: {url}. Expected format: https://name.substack.com"
+                )
             feed_url = f"https://{host}/feed"
             return identifier, feed_url
+        if not host:
+            raise InvalidSourceURLError(f"Invalid Substack URL: {url}. No host found.")
         identifier = host
         feed_url = f"https://{host}/feed"
         return identifier, feed_url
@@ -42,22 +52,37 @@ def parse_source_identifier(source_type: SourceType, url: str) -> tuple[str, str
                 identifier = path.split("/c/")[1].split("/")[0]
             else:
                 identifier = path.strip("/")
+            if not identifier:
+                raise InvalidSourceURLError(
+                    f"Invalid YouTube URL: {url}. Could not extract channel identifier."
+                )
             return identifier, None
+        raise InvalidSourceURLError(
+            f"Invalid YouTube URL: {url}. Expected youtube.com domain."
+        )
 
     elif source_type == SourceType.RSS:
+        if not parsed.netloc:
+            raise InvalidSourceURLError(f"Invalid RSS URL: {url}. No host found.")
         identifier = parsed.netloc + parsed.path
         return identifier, url
 
     elif source_type == SourceType.PAGE:
+        if not parsed.netloc:
+            raise InvalidSourceURLError(f"Invalid page URL: {url}. No host found.")
         identifier = parsed.netloc + parsed.path.rstrip("/")
         return identifier, url
 
     elif source_type == SourceType.ARXIV:
         identifier = url.strip()
+        if not identifier:
+            raise InvalidSourceURLError("Arxiv category cannot be empty.")
         feed_url = f"https://arxiv.org/rss/{identifier}"
         return identifier, feed_url
 
     elif source_type == SourceType.BLOG:
+        if not parsed.netloc:
+            raise InvalidSourceURLError(f"Invalid blog URL: {url}. No host found.")
         identifier = parsed.netloc + parsed.path.rstrip("/")
         return identifier, None
 
@@ -171,7 +196,11 @@ class SourceManagement(commands.Cog):
                 )
                 return
 
-        identifier, feed_url = parse_source_identifier(stype, url)
+        try:
+            identifier, feed_url = parse_source_identifier(stype, url)
+        except InvalidSourceURLError as e:
+            await interaction.followup.send(str(e), ephemeral=True)
+            return
 
         existing = await self.bot.repository.get_source_by_identifier(identifier)
         if existing:
