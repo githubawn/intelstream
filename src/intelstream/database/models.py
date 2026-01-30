@@ -127,3 +127,16 @@ class ForwardingRule(Base):
 
     def __repr__(self) -> str:
         return f"<ForwardingRule(source={self.source_channel_id!r}, dest={self.destination_channel_id!r})>"
+
+
+class SuckBoobsStats(Base):
+    __tablename__ = "suck_boobs_stats"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    guild_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    user_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    times_used: Mapped[int] = mapped_column(Integer, default=0)
+    times_pinged: Mapped[int] = mapped_column(Integer, default=0)
+
+    def __repr__(self) -> str:
+        return f"<SuckBoobsStats(user_id={self.user_id!r}, used={self.times_used}, pinged={self.times_pinged})>"
