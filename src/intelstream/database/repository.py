@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
 
 from sqlalchemy import exists, select, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import (
     AsyncConnection,
     AsyncSession,
@@ -328,21 +329,26 @@ class Repository:
             return result.scalar_one_or_none()
 
     async def get_or_create_discord_config(self, guild_id: str, channel_id: str) -> DiscordConfig:
-        async with self.session() as session:
-            result = await session.execute(
-                select(DiscordConfig).where(DiscordConfig.guild_id == guild_id)
-            )
-            config = result.scalar_one_or_none()
-            if config:
-                config.channel_id = channel_id
-                await session.commit()
-                await session.refresh(config)
-            else:
+        for _ in range(3):
+            async with self.session() as session:
+                result = await session.execute(
+                    select(DiscordConfig).where(DiscordConfig.guild_id == guild_id)
+                )
+                config = result.scalar_one_or_none()
+                if config:
+                    config.channel_id = channel_id
+                    await session.commit()
+                    return config
+
                 config = DiscordConfig(guild_id=guild_id, channel_id=channel_id)
                 session.add(config)
-                await session.commit()
-                await session.refresh(config)
-            return config
+                try:
+                    await session.commit()
+                    return config
+                except IntegrityError:
+                    pass
+
+        raise RuntimeError(f"Failed to get or create discord config for guild {guild_id}")
 
     async def get_discord_config(self, guild_id: str) -> DiscordConfig | None:
         async with self.session() as session:

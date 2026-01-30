@@ -1,3 +1,4 @@
+import asyncio
 from datetime import UTC, datetime
 
 import pytest
@@ -523,6 +524,27 @@ class TestDiscordConfigOperations:
 
         missing = await repository.get_discord_config("nonexistent")
         assert missing is None
+
+    async def test_get_or_create_discord_config_concurrent_access(self, tmp_path) -> None:
+        db_path = tmp_path / "test_concurrent.db"
+        repository = Repository(f"sqlite+aiosqlite:///{db_path}")
+        await repository.initialize()
+
+        guild_id = "concurrent-guild"
+        channel_id = "concurrent-channel"
+
+        results = await asyncio.gather(
+            repository.get_or_create_discord_config(guild_id, channel_id),
+            repository.get_or_create_discord_config(guild_id, channel_id),
+            repository.get_or_create_discord_config(guild_id, channel_id),
+        )
+
+        assert len(results) == 3
+        assert all(r.guild_id == guild_id for r in results)
+        assert all(r.channel_id == channel_id for r in results)
+        assert results[0].id == results[1].id == results[2].id
+
+        await repository.close()
 
 
 class TestMigrations:
