@@ -1,3 +1,4 @@
+import asyncio
 import re
 from datetime import UTC, datetime
 from typing import Any
@@ -212,26 +213,13 @@ class YouTubeAdapter(BaseAdapter):
 
     async def _fetch_transcript(self, video_id: str) -> str | None:
         try:
-            ytt_api = YouTubeTranscriptApi()
-            transcript_list = ytt_api.list(video_id)
-
-            try:
-                transcript = transcript_list.find_manually_created_transcript(["en"])
-            except NoTranscriptFound:
-                try:
-                    transcript = transcript_list.find_generated_transcript(["en"])
-                except NoTranscriptFound:
-                    transcripts = list(transcript_list)
-                    if transcripts:
-                        transcript = transcripts[0]
-                        if transcript.language_code != "en":
-                            transcript = transcript.translate("en")
-                    else:
-                        return None
-
-            entries = transcript.fetch()
-            return " ".join(str(entry.text) for entry in entries)
-
+            return await asyncio.wait_for(
+                asyncio.to_thread(self._fetch_transcript_sync, video_id),
+                timeout=30.0,
+            )
+        except TimeoutError:
+            logger.warning("Transcript fetch timed out", video_id=video_id)
+            return None
         except TranscriptsDisabled:
             logger.debug("Transcripts disabled for video", video_id=video_id)
             return None
@@ -241,3 +229,24 @@ class YouTubeAdapter(BaseAdapter):
         except Exception as e:
             logger.warning("Failed to fetch transcript", video_id=video_id, error=str(e))
             return None
+
+    def _fetch_transcript_sync(self, video_id: str) -> str | None:
+        ytt_api = YouTubeTranscriptApi()
+        transcript_list = ytt_api.list(video_id)
+
+        try:
+            transcript = transcript_list.find_manually_created_transcript(["en"])
+        except NoTranscriptFound:
+            try:
+                transcript = transcript_list.find_generated_transcript(["en"])
+            except NoTranscriptFound:
+                transcripts = list(transcript_list)
+                if transcripts:
+                    transcript = transcripts[0]
+                    if transcript.language_code != "en":
+                        transcript = transcript.translate("en")
+                else:
+                    return None
+
+        entries = transcript.fetch()
+        return " ".join(str(entry.text) for entry in entries)
