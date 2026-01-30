@@ -18,8 +18,6 @@ from intelstream.services.summarizer import SummarizationError, SummarizationSer
 
 logger = structlog.get_logger()
 
-SUMMARIZATION_DELAY_SECONDS = 0.5
-
 
 class ContentPipeline:
     def __init__(
@@ -35,7 +33,7 @@ class ContentPipeline:
         self._adapters: dict[SourceType, BaseAdapter] = {}
 
     async def initialize(self) -> None:
-        self._http_client = httpx.AsyncClient(timeout=30.0)
+        self._http_client = httpx.AsyncClient(timeout=self._settings.http_timeout_seconds)
         self._adapters = self._create_adapters()
         logger.info("Content pipeline initialized")
 
@@ -213,7 +211,7 @@ class ContentPipeline:
                     error=str(e),
                 )
 
-            await asyncio.sleep(SUMMARIZATION_DELAY_SECONDS)
+            await asyncio.sleep(self._settings.summarization_delay_seconds)
 
         logger.info("Summarization complete", summarized_count=summarized_count)
         return summarized_count

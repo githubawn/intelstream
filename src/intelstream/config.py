@@ -83,6 +83,41 @@ class Settings(BaseSettings):
         description="Maximum Discord message length (Discord limit is 2000)",
     )
 
+    http_timeout_seconds: float = Field(
+        default=30.0,
+        ge=5.0,
+        le=120.0,
+        description="Timeout for HTTP requests in seconds",
+    )
+
+    max_html_length: int = Field(
+        default=50000,
+        ge=10000,
+        le=200000,
+        description="Maximum HTML length for LLM processing",
+    )
+
+    summarization_delay_seconds: float = Field(
+        default=0.5,
+        ge=0,
+        le=5.0,
+        description="Delay between summarization requests to avoid rate limiting",
+    )
+
+    max_consecutive_failures: int = Field(
+        default=3,
+        ge=1,
+        le=20,
+        description="Number of consecutive failures before re-analyzing a source",
+    )
+
+    youtube_max_results: int = Field(
+        default=5,
+        ge=1,
+        le=50,
+        description="Maximum number of YouTube videos to fetch per poll",
+    )
+
     @field_validator("database_url")
     @classmethod
     def ensure_data_directory(cls, v: str) -> str:

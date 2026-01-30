@@ -12,6 +12,7 @@ from intelstream.adapters.strategies.base import (
     DiscoveryResult,
     DiscoveryStrategy,
 )
+from intelstream.config import get_settings
 
 logger = structlog.get_logger()
 
@@ -114,7 +115,7 @@ class SitemapDiscoveryStrategy(DiscoveryStrategy):
             if self._client:
                 response = await self._client.get(robots_url, follow_redirects=True)
             else:
-                async with httpx.AsyncClient(timeout=10.0) as client:
+                async with httpx.AsyncClient(timeout=get_settings().http_timeout_seconds) as client:
                     response = await client.get(robots_url, follow_redirects=True)
 
             if response.status_code != 200:
@@ -136,7 +137,7 @@ class SitemapDiscoveryStrategy(DiscoveryStrategy):
             if self._client:
                 response = await self._client.get(url, follow_redirects=True)
             else:
-                async with httpx.AsyncClient(timeout=10.0) as client:
+                async with httpx.AsyncClient(timeout=get_settings().http_timeout_seconds) as client:
                     response = await client.get(url, follow_redirects=True)
 
             if response.status_code != 200:
@@ -153,7 +154,7 @@ class SitemapDiscoveryStrategy(DiscoveryStrategy):
             if self._client:
                 response = await self._client.get(sitemap_url, follow_redirects=True)
             else:
-                async with httpx.AsyncClient(timeout=30.0) as client:
+                async with httpx.AsyncClient(timeout=get_settings().http_timeout_seconds) as client:
                     response = await client.get(sitemap_url, follow_redirects=True)
 
             response.raise_for_status()

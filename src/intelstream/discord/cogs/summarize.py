@@ -56,7 +56,7 @@ class Summarize(commands.Cog):
 
     async def cog_load(self) -> None:
         self._http_client = httpx.AsyncClient(
-            timeout=30.0,
+            timeout=self.bot.settings.http_timeout_seconds,
             follow_redirects=True,
             headers={"User-Agent": "Mozilla/5.0 (compatible; IntelStream/1.0)"},
         )

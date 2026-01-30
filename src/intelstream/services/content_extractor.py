@@ -8,6 +8,8 @@ import structlog
 import trafilatura
 from bs4 import BeautifulSoup, Tag
 
+from intelstream.config import get_settings
+
 logger = structlog.get_logger()
 
 
@@ -79,7 +81,7 @@ class ContentExtractor:
             if self._client:
                 response = await self._client.get(url, headers=headers, follow_redirects=True)
             else:
-                async with httpx.AsyncClient(timeout=30.0) as client:
+                async with httpx.AsyncClient(timeout=get_settings().http_timeout_seconds) as client:
                     response = await client.get(url, headers=headers, follow_redirects=True)
             response.raise_for_status()
             return response.text

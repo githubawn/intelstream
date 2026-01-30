@@ -19,12 +19,12 @@ from intelstream.adapters.strategies.base import (
     DiscoveryResult,
     DiscoveryStrategy,
 )
+from intelstream.config import get_settings
 from intelstream.database.repository import Repository
 
 logger = structlog.get_logger()
 
 DEFAULT_MODEL = "claude-3-5-haiku-20241022"
-MAX_HTML_LENGTH = 50000
 
 EXTRACTION_PROMPT = """Analyze this HTML and extract all blog posts/articles listed on the page.
 
@@ -124,7 +124,7 @@ class LLMExtractionStrategy(DiscoveryStrategy):
             if self._http_client:
                 response = await self._http_client.get(url, headers=headers, follow_redirects=True)
             else:
-                async with httpx.AsyncClient(timeout=30.0) as client:
+                async with httpx.AsyncClient(timeout=get_settings().http_timeout_seconds) as client:
                     response = await client.get(url, headers=headers, follow_redirects=True)
             response.raise_for_status()
             return response.text
@@ -148,10 +148,11 @@ class LLMExtractionStrategy(DiscoveryStrategy):
 
         cleaned = str(soup)
 
-        if len(cleaned) > MAX_HTML_LENGTH:
-            truncated = cleaned[:MAX_HTML_LENGTH]
+        max_html_length = get_settings().max_html_length
+        if len(cleaned) > max_html_length:
+            truncated = cleaned[:max_html_length]
             last_close = truncated.rfind(">")
-            if last_close > MAX_HTML_LENGTH - 1000:
+            if last_close > max_html_length - 1000:
                 truncated = truncated[: last_close + 1]
             else:
                 last_open = truncated.rfind("<")

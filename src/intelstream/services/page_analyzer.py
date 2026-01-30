@@ -15,10 +15,11 @@ from tenacity import (
     wait_exponential,
 )
 
+from intelstream.config import get_settings
+
 logger = structlog.get_logger()
 
 DEFAULT_MODEL = "claude-sonnet-4-20250514"
-MAX_HTML_LENGTH = 50000
 
 
 @dataclass
@@ -139,7 +140,7 @@ class PageAnalyzer:
             if self._http_client:
                 response = await self._http_client.get(url, headers=headers, follow_redirects=True)
             else:
-                async with httpx.AsyncClient(timeout=30.0) as client:
+                async with httpx.AsyncClient(timeout=get_settings().http_timeout_seconds) as client:
                     response = await client.get(url, headers=headers, follow_redirects=True)
 
             response.raise_for_status()
@@ -166,12 +167,13 @@ class PageAnalyzer:
 
         cleaned = str(soup)
 
-        if len(cleaned) > MAX_HTML_LENGTH:
-            cleaned = cleaned[:MAX_HTML_LENGTH]
+        max_html_length = get_settings().max_html_length
+        if len(cleaned) > max_html_length:
+            cleaned = cleaned[:max_html_length]
             logger.warning(
                 "HTML truncated for analysis",
                 original_length=len(html),
-                truncated_length=MAX_HTML_LENGTH,
+                truncated_length=max_html_length,
             )
 
         return cleaned
