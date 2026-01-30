@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
@@ -299,3 +299,12 @@ class TestWebFetcher:
         result = await fetcher.fetch("https://example.com/article")
 
         assert result.thumbnail_url == "https://example.com/twitter-image.jpg"
+
+    async def test_fetch_no_nameerror_when_client_creation_fails(self):
+        with patch(
+            "intelstream.services.web_fetcher.httpx.AsyncClient",
+            side_effect=RuntimeError("Client creation failed"),
+        ):
+            fetcher = WebFetcher()
+            with pytest.raises(RuntimeError, match="Client creation failed"):
+                await fetcher.fetch("https://example.com/article")
