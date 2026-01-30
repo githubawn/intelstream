@@ -100,6 +100,14 @@ class ContentPipeline:
                         source_type=source.type.value,
                     )
                     await self._repository.increment_failure_count(source.id)
+                elif status in (401, 403):
+                    logger.error(
+                        "Auth error fetching source, check credentials",
+                        source_name=source.name,
+                        source_type=source.type.value,
+                        status=status,
+                    )
+                    await self._repository.increment_failure_count(source.id)
                 elif status >= 500:
                     logger.warning(
                         "Server error fetching source",
