@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
+from intelstream.database.exceptions import DuplicateContentError, DuplicateSourceError
 from intelstream.database.models import (
     Base,
     ContentItem,
@@ -118,7 +119,12 @@ class Repository:
                 channel_id=channel_id,
             )
             session.add(source)
-            await session.commit()
+            try:
+                await session.commit()
+            except IntegrityError as e:
+                await session.rollback()
+                logger.warning("Duplicate source", identifier=identifier, error=str(e))
+                raise DuplicateSourceError(identifier) from e
             await session.refresh(source)
             logger.info(
                 "Source added",
@@ -238,7 +244,12 @@ class Repository:
                 thumbnail_url=thumbnail_url,
             )
             session.add(content_item)
-            await session.commit()
+            try:
+                await session.commit()
+            except IntegrityError as e:
+                await session.rollback()
+                logger.debug("Duplicate content item", external_id=external_id)
+                raise DuplicateContentError(external_id) from e
             await session.refresh(content_item)
             logger.debug(
                 "Content item added",
