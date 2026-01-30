@@ -1,10 +1,11 @@
 from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
+from typing import Any
 
 import feedparser
 
 
-def _parse_time_tuple(parsed: tuple) -> datetime | None:
+def _parse_time_tuple(parsed: tuple[Any, ...]) -> datetime | None:
     """Safely parse a time tuple into a datetime.
 
     Returns None if the tuple is invalid or malformed.
