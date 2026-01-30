@@ -1,6 +1,4 @@
 import re
-from datetime import UTC, datetime
-from email.utils import parsedate_to_datetime
 from urllib.parse import urljoin, urlparse
 
 import feedparser
@@ -13,6 +11,7 @@ from intelstream.adapters.strategies.base import (
     DiscoveryResult,
     DiscoveryStrategy,
 )
+from intelstream.utils.feed_utils import parse_feed_date
 
 logger = structlog.get_logger()
 
@@ -176,7 +175,7 @@ class RSSDiscoveryStrategy(DiscoveryStrategy):
                     continue
 
                 title = str(entry.get("title", ""))
-                published_at = self._parse_date(entry)
+                published_at = parse_feed_date(entry)
 
                 posts.append(DiscoveredPost(url=post_url, title=title, published_at=published_at))
 
@@ -185,24 +184,3 @@ class RSSDiscoveryStrategy(DiscoveryStrategy):
         except httpx.HTTPError as e:
             logger.debug("Failed to parse RSS feed", rss_url=rss_url, error=str(e))
             return None
-
-    def _parse_date(self, entry: feedparser.FeedParserDict) -> datetime | None:
-        if entry.get("published_parsed"):
-            parsed = entry.published_parsed
-            return datetime(
-                parsed[0], parsed[1], parsed[2], parsed[3], parsed[4], parsed[5], tzinfo=UTC
-            )
-
-        if entry.get("published"):
-            try:
-                return parsedate_to_datetime(str(entry.published))
-            except (TypeError, ValueError):
-                pass
-
-        if entry.get("updated_parsed"):
-            parsed = entry.updated_parsed
-            return datetime(
-                parsed[0], parsed[1], parsed[2], parsed[3], parsed[4], parsed[5], tzinfo=UTC
-            )
-
-        return None
