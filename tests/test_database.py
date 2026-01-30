@@ -17,6 +17,21 @@ async def repository():
     await repo.close()
 
 
+class TestRepositoryInitialization:
+    def test_rejects_non_sqlite_database_url(self) -> None:
+        with pytest.raises(ValueError, match="Only SQLite databases are supported"):
+            Repository("postgresql+asyncpg://localhost/test")
+
+    def test_rejects_mysql_database_url(self) -> None:
+        with pytest.raises(ValueError, match="Only SQLite databases are supported"):
+            Repository("mysql+aiomysql://localhost/test")
+
+    async def test_accepts_sqlite_database_url(self) -> None:
+        repo = Repository("sqlite+aiosqlite:///:memory:")
+        assert repo is not None
+        await repo.close()
+
+
 class TestSourceOperations:
     async def test_add_source(self, repository: Repository) -> None:
         source = await repository.add_source(
