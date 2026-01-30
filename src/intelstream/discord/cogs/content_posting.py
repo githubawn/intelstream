@@ -14,11 +14,16 @@ logger = structlog.get_logger()
 
 
 class ContentPosting(commands.Cog):
+    MAX_CONSECUTIVE_FAILURES = 5
+    MAX_BACKOFF_MULTIPLIER = 4
+
     def __init__(self, bot: "IntelStreamBot") -> None:
         self.bot = bot
         self._pipeline: ContentPipeline | None = None
         self._poster: ContentPoster | None = None
         self._initialized = False
+        self._consecutive_failures = 0
+        self._base_interval: int = 5
 
     async def cog_load(self) -> None:
         summarizer = SummarizationService(
@@ -41,12 +46,13 @@ class ContentPosting(commands.Cog):
         )
         self._initialized = True
 
-        self.content_loop.change_interval(minutes=self.bot.settings.content_poll_interval_minutes)
+        self._base_interval = self.bot.settings.content_poll_interval_minutes
+        self.content_loop.change_interval(minutes=self._base_interval)
         self.content_loop.start()
 
         logger.info(
             "Content posting cog loaded",
-            poll_interval=self.bot.settings.content_poll_interval_minutes,
+            poll_interval=self._base_interval,
         )
 
     async def cog_unload(self) -> None:
@@ -63,6 +69,18 @@ class ContentPosting(commands.Cog):
         if not self._initialized or not self._pipeline or not self._poster:
             logger.warning("Content loop skipped: not initialized")
             return
+
+        if self._consecutive_failures == self.MAX_CONSECUTIVE_FAILURES:
+            logger.error(
+                "Content loop circuit breaker triggered, will retry hourly",
+                consecutive_failures=self._consecutive_failures,
+            )
+            await self.bot.notify_owner(
+                f"Content loop hit {self.MAX_CONSECUTIVE_FAILURES} consecutive failures. "
+                "Switching to hourly retries until recovered."
+            )
+            self._consecutive_failures += 1
+            self.content_loop.change_interval(minutes=60)
 
         try:
             new_items, summarized = await self._pipeline.run_cycle()
@@ -90,9 +108,20 @@ class ContentPosting(commands.Cog):
                         error=str(e),
                     )
 
+            self._reset_backoff()
+
         except Exception as e:
-            logger.error("Content loop error", error=str(e))
-            await self.bot.notify_owner(f"Content loop error: {e}")
+            self._consecutive_failures += 1
+            logger.error(
+                "Content loop error",
+                error=str(e),
+                consecutive_failures=self._consecutive_failures,
+            )
+
+            if self._consecutive_failures == 1:
+                await self.bot.notify_owner(f"Content loop error: {e}")
+
+            self._apply_backoff()
 
     @content_loop.before_loop
     async def before_content_loop(self) -> None:
@@ -101,8 +130,35 @@ class ContentPosting(commands.Cog):
 
     @content_loop.error  # type: ignore[type-var]
     async def content_loop_error(self, error: Exception) -> None:
-        logger.error("Content loop encountered an error", error=str(error))
-        await self.bot.notify_owner(f"Content loop error: {error}")
+        self._consecutive_failures += 1
+        logger.error(
+            "Content loop encountered an error",
+            error=str(error),
+            consecutive_failures=self._consecutive_failures,
+        )
+
+        if self._consecutive_failures == 1:
+            await self.bot.notify_owner(f"Content loop error: {error}")
+
+        self._apply_backoff()
+
+    def _apply_backoff(self) -> None:
+        if self._consecutive_failures > self.MAX_CONSECUTIVE_FAILURES:
+            return
+        multiplier = min(2 ** (self._consecutive_failures - 1), self.MAX_BACKOFF_MULTIPLIER)
+        new_interval = self._base_interval * multiplier
+        self.content_loop.change_interval(minutes=new_interval)
+        logger.info(
+            "Applied backoff to content loop",
+            new_interval_minutes=new_interval,
+            consecutive_failures=self._consecutive_failures,
+        )
+
+    def _reset_backoff(self) -> None:
+        if self._consecutive_failures > 0:
+            self._consecutive_failures = 0
+            self.content_loop.change_interval(minutes=self._base_interval)
+            logger.info("Content loop backoff reset")
 
 
 async def setup(bot: "IntelStreamBot") -> None:
