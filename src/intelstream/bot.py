@@ -1,3 +1,4 @@
+import asyncio
 from datetime import UTC, datetime
 from typing import Any
 
@@ -183,8 +184,23 @@ class IntelStreamBot(commands.Bot):
             logger.error(f"Failed to DM owner: {e}")
 
     async def close(self) -> None:
-        await self.repository.close()
-        await super().close()
+        logger.info("Shutting down bot...")
+
+        for cog_name in list(self.cogs.keys()):
+            try:
+                await self.remove_cog(cog_name)
+                logger.debug("Unloaded cog", cog=cog_name)
+            except Exception as e:
+                logger.error("Error unloading cog", cog=cog_name, error=str(e))
+
+        try:
+            await asyncio.wait_for(self.repository.close(), timeout=5.0)
+        except TimeoutError:
+            logger.error("Repository close timed out")
+        except Exception as e:
+            logger.error("Error closing repository", error=str(e))
+        finally:
+            await super().close()
 
 
 class CoreCommands(commands.Cog):
