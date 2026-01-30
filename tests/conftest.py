@@ -5,6 +5,19 @@ from sqlalchemy.orm import sessionmaker
 from intelstream.database.models import Base
 
 
+@pytest.fixture(autouse=True)
+def mock_settings_env(monkeypatch):
+    monkeypatch.setenv("DISCORD_BOT_TOKEN", "test-discord-token")
+    monkeypatch.setenv("DISCORD_GUILD_ID", "123456789")
+    monkeypatch.setenv("DISCORD_OWNER_ID", "987654321")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-anthropic-key")
+    from intelstream.config import get_settings
+
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
 @pytest.fixture
 async def db_session():
     engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=False)

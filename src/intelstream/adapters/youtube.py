@@ -14,6 +14,7 @@ from youtube_transcript_api._errors import (
 )
 
 from intelstream.adapters.base import BaseAdapter, ContentData
+from intelstream.config import get_settings
 
 logger = structlog.get_logger()
 
@@ -40,9 +41,12 @@ class YouTubeAdapter(BaseAdapter):
         self,
         identifier: str,
         feed_url: str | None = None,  # noqa: ARG002
-        max_results: int = 5,
+        max_results: int | None = None,
     ) -> list[ContentData]:
         logger.debug("Fetching YouTube videos", identifier=identifier)
+
+        if max_results is None:
+            max_results = get_settings().youtube_max_results
 
         try:
             channel_id = await self._resolve_channel_id(identifier)
