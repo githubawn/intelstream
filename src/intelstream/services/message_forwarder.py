@@ -183,14 +183,14 @@ class MessageForwarder:
                     current_total=total_size,
                     attachment_size=attachment.size,
                     limit=MAX_TOTAL_ATTACHMENT_SIZE,
-                    skipped_count=len(message.attachments) - len(files),
+                    skipped_count=len(message.attachments[:10]) - len(files),
                 )
                 break
             try:
                 file = await attachment.to_file()
                 files.append(file)
                 total_size += attachment.size
-            except (discord.HTTPException, discord.NotFound) as e:
+            except discord.HTTPException as e:
                 logger.warning(
                     "Failed to download attachment",
                     filename=attachment.filename,
