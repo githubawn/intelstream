@@ -1,6 +1,6 @@
 import logging
 from datetime import UTC, datetime
-from typing import Any, cast
+from typing import Any
 
 import discord
 from discord import app_commands
@@ -17,7 +17,9 @@ class RestrictedCommandTree(app_commands.CommandTree):
         super().__init__(bot, *args, **kwargs)
 
     async def interaction_check(self, interaction: discord.Interaction, /) -> bool:
-        bot = cast("IntelStreamBot", self.client)
+        if not isinstance(self.client, IntelStreamBot):
+            return False
+        bot = self.client
         allowed_channel_id = bot.settings.discord_channel_id
         if allowed_channel_id is not None and interaction.channel_id != allowed_channel_id:
             await interaction.response.send_message(

@@ -32,7 +32,7 @@ class RSSAdapter(BaseAdapter):
                 response.raise_for_status()
                 content = response.text
             else:
-                async with httpx.AsyncClient() as client:
+                async with httpx.AsyncClient(timeout=30.0) as client:
                     response = await client.get(url, follow_redirects=True)
                     response.raise_for_status()
                     content = response.text

@@ -72,10 +72,11 @@ class YouTubeAdapter(BaseAdapter):
             return items
 
         except HttpError as e:
+            status_code = e.resp.status if e.resp else None
             logger.error(
                 "YouTube API error",
                 identifier=identifier,
-                status_code=e.resp.status,
+                status_code=status_code,
                 error=str(e),
             )
             raise
