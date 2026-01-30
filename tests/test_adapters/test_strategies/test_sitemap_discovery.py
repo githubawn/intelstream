@@ -279,3 +279,31 @@ class TestSitemapDiscoveryStrategy:
             )
 
         assert result is None
+
+    @respx.mock
+    async def test_accepts_large_uncompressed_sitemap_under_limit(
+        self, sitemap_strategy: SitemapDiscoveryStrategy
+    ):
+        """Verify uncompressed sitemaps between MAX_COMPRESSED_SIZE and MAX_DECOMPRESSED_SIZE are accepted."""
+        xml = """<?xml version="1.0"?>
+        <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+            <url><loc>https://example.com/blog/post</loc></url>
+        </urlset>
+        """
+
+        respx.get("https://example.com/robots.txt").mock(return_value=httpx.Response(404))
+        respx.get("https://example.com/sitemap.xml").mock(
+            return_value=httpx.Response(200, text=xml)
+        )
+
+        with (
+            patch.object(sitemap_discovery, "MAX_COMPRESSED_SIZE", 100),
+            patch.object(sitemap_discovery, "MAX_DECOMPRESSED_SIZE", 10000),
+        ):
+            result = await sitemap_strategy.discover(
+                "https://example.com/blog", url_pattern="/blog/"
+            )
+
+        assert result is not None
+        assert len(result.posts) == 1
+        assert result.posts[0].url == "https://example.com/blog/post"
