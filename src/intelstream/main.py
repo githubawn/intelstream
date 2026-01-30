@@ -30,9 +30,10 @@ def configure_logging(log_level: str) -> None:
         level=getattr(logging, log_level.upper()),
     )
 
-    logging.getLogger("discord").setLevel(logging.WARNING)
-    logging.getLogger("discord.http").setLevel(logging.WARNING)
-    logging.getLogger("httpx").setLevel(logging.WARNING)
+    third_party_level = logging.DEBUG if log_level.upper() == "DEBUG" else logging.WARNING
+    logging.getLogger("discord").setLevel(third_party_level)
+    logging.getLogger("discord.http").setLevel(third_party_level)
+    logging.getLogger("httpx").setLevel(third_party_level)
 
 
 def main() -> None:
