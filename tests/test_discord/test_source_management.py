@@ -5,6 +5,7 @@ import pytest
 
 from intelstream.database.models import PauseReason, SourceType
 from intelstream.discord.cogs.source_management import (
+    InvalidSourceURLError,
     SourceManagement,
     parse_source_identifier,
 )
@@ -73,6 +74,38 @@ class TestParseSourceIdentifier:
         )
         assert identifier == "example.com/feed.xml"
         assert feed_url == "https://example.com/feed.xml"
+
+    def test_parse_substack_empty_subdomain(self):
+        with pytest.raises(InvalidSourceURLError, match="Invalid Substack URL"):
+            parse_source_identifier(SourceType.SUBSTACK, "https://.substack.com")
+
+    def test_parse_substack_www_subdomain(self):
+        with pytest.raises(InvalidSourceURLError, match="Invalid Substack URL"):
+            parse_source_identifier(SourceType.SUBSTACK, "https://www.substack.com")
+
+    def test_parse_youtube_no_channel(self):
+        with pytest.raises(InvalidSourceURLError, match="Could not extract channel"):
+            parse_source_identifier(SourceType.YOUTUBE, "https://www.youtube.com/")
+
+    def test_parse_youtube_non_youtube_domain(self):
+        with pytest.raises(InvalidSourceURLError, match=r"Expected youtube\.com"):
+            parse_source_identifier(SourceType.YOUTUBE, "https://example.com/channel")
+
+    def test_parse_rss_no_host(self):
+        with pytest.raises(InvalidSourceURLError, match="No host found"):
+            parse_source_identifier(SourceType.RSS, "not-a-url")
+
+    def test_parse_arxiv_empty(self):
+        with pytest.raises(InvalidSourceURLError, match="cannot be empty"):
+            parse_source_identifier(SourceType.ARXIV, "   ")
+
+    def test_parse_page_no_host(self):
+        with pytest.raises(InvalidSourceURLError, match="No host found"):
+            parse_source_identifier(SourceType.PAGE, "not-a-url")
+
+    def test_parse_blog_no_host(self):
+        with pytest.raises(InvalidSourceURLError, match="No host found"):
+            parse_source_identifier(SourceType.BLOG, "not-a-url")
 
 
 class TestSourceManagementAdd:
