@@ -1,6 +1,6 @@
 # IntelStream
 
-A Discord bot that monitors content sources and posts AI-generated summaries to a Discord channel.
+A Discord bot that monitors content sources and posts AI-generated summaries to Discord channels.
 
 ## Features
 
@@ -8,9 +8,12 @@ A Discord bot that monitors content sources and posts AI-generated summaries to 
 - **YouTube channels** - Track new videos with transcript-based summarization
 - **RSS/Atom feeds** - Support for any standard RSS or Atom feed
 - **Arxiv papers** - Monitor research paper categories (cs.AI, cs.LG, cs.CL, etc.)
-- **Web pages** - AI-powered extraction from any blog or news site using automatic CSS selector detection
+- **Blogs** - Smart extraction from any blog using cascading discovery strategies (RSS, Sitemap, LLM extraction)
+- **Web pages** - Monitor any web page URL with automatic content detection
 - **Manual summarization** - Summarize any URL on-demand with `/summarize`
+- **Message forwarding** - Forward messages from channels to threads for better organization
 - **AI summaries** - Claude-powered summaries with thesis and key arguments format
+- **Multi-channel routing** - Route different sources to different channels
 
 ## Requirements
 
@@ -23,7 +26,7 @@ A Discord bot that monitors content sources and posts AI-generated summaries to 
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/intelstream.git
+   git clone https://github.com/user1303836/intelstream.git
    cd intelstream
    ```
 
@@ -39,8 +42,8 @@ A Discord bot that monitors content sources and posts AI-generated summaries to 
    DISCORD_OWNER_ID=your_user_id
    ANTHROPIC_API_KEY=your_anthropic_api_key
 
-   # Optional: Set a default channel for summaries
-   # DISCORD_CHANNEL_ID=your_channel_id
+   # Optional: YouTube monitoring
+   # YOUTUBE_API_KEY=your_youtube_api_key
    ```
 
 4. Run the bot:
@@ -63,7 +66,6 @@ A Discord bot that monitors content sources and posts AI-generated summaries to 
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `DISCORD_CHANNEL_ID` | - | Default channel for posting summaries (see Multi-Channel Setup) |
 | `YOUTUBE_API_KEY` | - | YouTube Data API key (required for YouTube monitoring) |
 | `DATABASE_URL` | `sqlite+aiosqlite:///./data/intelstream.db` | Database connection string |
 | `DEFAULT_POLL_INTERVAL_MINUTES` | `5` | Default polling interval for new sources (1-60) |
@@ -76,7 +78,8 @@ A Discord bot that monitors content sources and posts AI-generated summaries to 
 |----------|---------|-------------|
 | `SUMMARY_MAX_TOKENS` | `2048` | Maximum tokens for AI-generated summaries (256-8192) |
 | `SUMMARY_MAX_INPUT_LENGTH` | `100000` | Maximum input content length before truncation (1000-500000) |
-| `SUMMARY_MODEL` | `claude-3-5-haiku-20241022` | Claude model to use for summarization |
+| `SUMMARY_MODEL` | `claude-3-5-haiku-20241022` | Claude model for background summarization |
+| `SUMMARY_MODEL_INTERACTIVE` | `claude-sonnet-4-20250514` | Claude model for interactive `/summarize` command |
 | `DISCORD_MAX_MESSAGE_LENGTH` | `2000` | Maximum Discord message length (500-2000) |
 
 ## Usage
@@ -96,7 +99,8 @@ A Discord bot that monitors content sources and posts AI-generated summaries to 
    /source add type:YouTube name:"Tech Channel" url:https://youtube.com/@channel
    /source add type:RSS name:"Blog Feed" url:https://example.com/feed.xml
    /source add type:Arxiv name:"ML Papers" url:cs.LG
-   /source add type:Page name:"Company Blog" url:https://example.com/blog
+   /source add type:Blog name:"Company Blog" url:https://example.com/blog
+   /source add type:Page name:"News Site" url:https://example.com/news
    ```
 
 4. The bot will automatically poll sources, fetch new content, generate AI summaries, and post them to your configured channel.
@@ -108,17 +112,18 @@ A Discord bot that monitors content sources and posts AI-generated summaries to 
 | Command | Description |
 |---------|-------------|
 | `/source add type:<type> name:<name> url:<url> [channel:#channel]` | Add a new content source |
-| `/source list` | List all configured sources with their status |
+| `/source list [channel:#channel]` | List sources (optionally filter by channel) |
 | `/source remove name:<name>` | Remove a source by name |
 | `/source toggle name:<name>` | Enable or disable a source |
 
-The optional `channel` parameter specifies which channel this source should post to. If omitted, the source uses the guild's default channel (set via `/config channel`).
+The optional `channel` parameter on `/source add` specifies which channel this source should post to. If omitted, the source uses the guild's default channel (set via `/config channel`).
 
 **Supported source types:**
 - `Substack` - Substack newsletter URL
 - `YouTube` - YouTube channel URL (requires YouTube API key)
 - `RSS` - Any RSS/Atom feed URL
 - `Arxiv` - Arxiv category code (e.g., `cs.AI`, `cs.LG`, `cs.CL`, `cs.CV`, `stat.ML`)
+- `Blog` - Any blog URL (uses cascading discovery: RSS, Sitemap, LLM extraction)
 - `Page` - Any web page URL (uses AI to detect content structure)
 
 #### Configuration
@@ -141,7 +146,7 @@ Forward messages from one channel to another. Useful for routing followed announ
 | Command | Description |
 |---------|-------------|
 | `/forward add source:#channel destination:#thread` | Create a forwarding rule |
-| `/forward list` | List all forwarding rules with message counts |
+| `/forward list [channel:#channel]` | List forwarding rules (optionally filter by channel) |
 | `/forward remove source:#channel destination:#thread` | Remove a forwarding rule |
 | `/forward pause source:#channel destination:#thread` | Temporarily pause forwarding |
 | `/forward resume source:#channel destination:#thread` | Resume paused forwarding |
@@ -150,12 +155,12 @@ Forward messages from one channel to another. Useful for routing followed announ
 
 ```
 External Server (OpenAI Announcements)
-    │ (Discord native "Follow")
-    ▼
+    | (Discord native "Follow")
+    v
 Your Server: #announcement-intake
-    │ (Bot forwards)
-    ▼
-Your Server: #announcements → "AI News" thread
+    | (Bot forwards)
+    v
+Your Server: #announcements -> "AI News" thread
 ```
 
 **Features**:
@@ -163,6 +168,13 @@ Your Server: #announcements → "AI News" thread
 - Automatically unarchives archived destination threads
 - Skips attachments that exceed the server's file size limit
 - Supports multiple forwarding rules from the same source to different destinations
+
+#### Bot Status
+
+| Command | Description |
+|---------|-------------|
+| `/status` | Show uptime, source counts, and latency |
+| `/ping` | Check bot responsiveness |
 
 ### How It Works
 
@@ -177,11 +189,18 @@ Your Server: #announcements → "AI News" thread
 
 **Arxiv**: Monitors RSS feeds for specific categories. Summaries focus on the problem solved, key innovation, and practical implications.
 
-**Page**: When you add a Page source, the bot uses Claude to analyze the page structure and automatically determine CSS selectors for extracting posts. This allows monitoring blogs and news sites that don't have RSS feeds.
+**Blog**: Uses cascading discovery strategies to find content:
+1. **RSS Discovery** - Tries common RSS paths (`/feed`, `/rss.xml`, `/feed.xml`, etc.)
+2. **Sitemap Discovery** - Parses `sitemap.xml` to extract article URLs
+3. **LLM Extraction** - Uses Claude to analyze HTML and extract post information
+
+Results are cached to avoid repeated extraction on subsequent polls.
+
+**Page**: When you add a Page source, the bot uses Claude to analyze the page structure and automatically determine CSS selectors for extracting posts.
 
 ### Multi-Channel Setup
 
-By default, all sources post to a single channel configured via `/config channel` or the `DISCORD_CHANNEL_ID` environment variable. For more advanced setups, you can route different sources to different channels.
+By default, all sources post to a single channel configured via `/config channel`. For more advanced setups, you can route different sources to different channels.
 
 **Per-source channels**: Specify a channel when adding a source:
 ```
@@ -195,8 +214,6 @@ In this example:
 - "Gaming" posts to #gaming-feed
 - "General" uses the default channel (set via `/config channel`)
 
-**Migration behavior**: If you have existing sources and set `DISCORD_CHANNEL_ID` in your environment, those sources will automatically be assigned to that channel on startup. This ensures existing setups continue working when upgrading to a multi-channel configuration.
-
 **Channel priority**:
 1. Source-specific channel (set via `/source add ... channel:#channel`)
 2. Guild default channel (set via `/config channel`)
@@ -208,6 +225,8 @@ In this example:
 ```bash
 uv run pytest
 ```
+
+The project has 250+ tests covering adapters, services, Discord cogs, and database operations.
 
 ### Linting and Formatting
 
@@ -222,17 +241,46 @@ uv run ruff format .
 uv run mypy src/
 ```
 
+### Continuous Integration
+
+GitHub Actions runs on all pull requests:
+- Ruff linting
+- MyPy type checking
+- Pytest with coverage
+
 ### Project Structure
 
 ```
 src/intelstream/
-├── adapters/          # Source adapters (Substack, YouTube, RSS, Arxiv, Page)
-├── database/          # SQLAlchemy models and repository
-├── discord/cogs/      # Discord command handlers
-├── services/          # Business logic (pipeline, summarizer, content poster)
-├── bot.py             # Discord bot main class
-├── config.py          # Pydantic settings
-└── main.py            # Entry point
+├── adapters/              # Source adapters
+│   ├── substack.py        # Substack RSS adapter
+│   ├── youtube.py         # YouTube API adapter
+│   ├── rss.py             # Generic RSS/Atom adapter
+│   ├── arxiv.py           # Arxiv RSS adapter
+│   ├── smart_blog.py      # Blog adapter with cascading strategies
+│   ├── page.py            # Web page adapter
+│   └── strategies/        # Discovery strategies for Blog adapter
+│       ├── rss_discovery.py
+│       ├── sitemap_discovery.py
+│       └── llm_extraction.py
+├── database/
+│   ├── models.py          # SQLAlchemy models
+│   └── repository.py      # Database operations
+├── discord/cogs/
+│   ├── source_management.py     # /source commands
+│   ├── config_management.py     # /config commands
+│   ├── content_posting.py       # Background polling task
+│   ├── summarize.py             # /summarize command
+│   └── message_forwarding.py    # /forward commands
+├── services/
+│   ├── pipeline.py        # Content pipeline orchestration
+│   ├── summarizer.py      # Claude summarization
+│   ├── content_poster.py  # Discord message formatting
+│   ├── message_forwarder.py  # Message forwarding logic
+│   └── web_fetcher.py     # HTTP fetching
+├── bot.py                 # Discord bot main class
+├── config.py              # Pydantic settings
+└── main.py                # Entry point
 ```
 
 ## License
