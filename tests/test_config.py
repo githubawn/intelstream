@@ -91,3 +91,31 @@ class TestSettings:
         repr_str = repr(settings)
 
         assert "youtube_api_key=None" in repr_str
+
+    def test_empty_discord_bot_token_rejected(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("DISCORD_BOT_TOKEN", "")
+        monkeypatch.setenv("DISCORD_GUILD_ID", "123456789")
+        monkeypatch.setenv("DISCORD_OWNER_ID", "111222333")
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+
+        with pytest.raises(ValidationError):
+            Settings(_env_file=None)
+
+    def test_empty_anthropic_api_key_rejected(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("DISCORD_BOT_TOKEN", "test_token")
+        monkeypatch.setenv("DISCORD_GUILD_ID", "123456789")
+        monkeypatch.setenv("DISCORD_OWNER_ID", "111222333")
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "")
+
+        with pytest.raises(ValidationError):
+            Settings(_env_file=None)
+
+    def test_summarization_delay_minimum(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("DISCORD_BOT_TOKEN", "test_token")
+        monkeypatch.setenv("DISCORD_GUILD_ID", "123456789")
+        monkeypatch.setenv("DISCORD_OWNER_ID", "111222333")
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+        monkeypatch.setenv("SUMMARIZATION_DELAY_SECONDS", "0")
+
+        with pytest.raises(ValidationError):
+            Settings(_env_file=None)

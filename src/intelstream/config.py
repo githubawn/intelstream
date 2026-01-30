@@ -14,7 +14,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    discord_bot_token: str = Field(description="Discord bot token")
+    discord_bot_token: str = Field(min_length=1, description="Discord bot token")
     discord_guild_id: int = Field(description="Discord guild (server) ID")
     discord_channel_id: int | None = Field(
         default=None,
@@ -24,7 +24,7 @@ class Settings(BaseSettings):
         description="Discord user ID of the bot owner for DM notifications"
     )
 
-    anthropic_api_key: str = Field(description="Anthropic API key for Claude")
+    anthropic_api_key: str = Field(min_length=1, description="Anthropic API key for Claude")
 
     youtube_api_key: str | None = Field(default=None, description="YouTube Data API key (optional)")
 
@@ -99,7 +99,7 @@ class Settings(BaseSettings):
 
     summarization_delay_seconds: float = Field(
         default=0.5,
-        ge=0,
+        ge=0.1,
         le=5.0,
         description="Delay between summarization requests to avoid rate limiting",
     )
