@@ -11,6 +11,7 @@ from discord.ext import commands
 from intelstream.adapters.smart_blog import SmartBlogAdapter
 from intelstream.database.models import PauseReason, SourceType
 from intelstream.services.page_analyzer import PageAnalysisError, PageAnalyzer
+from intelstream.utils.url_validation import is_safe_url
 
 if TYPE_CHECKING:
     from intelstream.bot import IntelStreamBot
@@ -152,6 +153,13 @@ class SourceManagement(commands.Cog):
             await interaction.followup.send(
                 "Blog sources are not available. No Anthropic API key configured.",
                 ephemeral=True,
+            )
+            return
+
+        safe, error_msg = is_safe_url(url)
+        if not safe:
+            await interaction.followup.send(
+                f"URL not allowed: {error_msg}", ephemeral=True
             )
             return
 
