@@ -9,9 +9,12 @@ class SSRFError(Exception):
 
 BLOCKED_HOSTS = frozenset({
     "localhost",
+    "localhost.",
+    "localhost.localdomain",
     "127.0.0.1",
     "::1",
     "0.0.0.0",
+    "[::1]",
 })
 
 
