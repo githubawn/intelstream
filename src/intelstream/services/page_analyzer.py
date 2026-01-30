@@ -8,6 +8,7 @@ import anthropic
 import httpx
 import structlog
 from bs4 import BeautifulSoup
+from soupsieve import SelectorSyntaxError
 from tenacity import (
     retry,
     retry_if_exception_type,
@@ -245,7 +246,20 @@ Respond with ONLY a JSON object, no markdown formatting."""
     def _validate_profile(self, html: str, profile: ExtractionProfile) -> dict[str, Any]:
         soup = BeautifulSoup(html, "lxml")
 
-        posts = soup.select(profile.post_selector)
+        try:
+            posts = soup.select(profile.post_selector)
+        except (SelectorSyntaxError, ValueError) as e:
+            logger.warning(
+                "Invalid CSS selector from LLM",
+                selector=profile.post_selector,
+                error=str(e),
+            )
+            return {
+                "valid": False,
+                "reason": f"Invalid CSS selector: {profile.post_selector}",
+                "post_count": 0,
+            }
+
         if not posts:
             return {
                 "valid": False,
@@ -255,8 +269,21 @@ Respond with ONLY a JSON object, no markdown formatting."""
 
         valid_posts = 0
         for post in posts[:10]:
-            title_elem = post.select_one(profile.title_selector)
-            url_elem = post.select_one(profile.url_selector)
+            try:
+                title_elem = post.select_one(profile.title_selector)
+                url_elem = post.select_one(profile.url_selector)
+            except (SelectorSyntaxError, ValueError) as e:
+                logger.warning(
+                    "Invalid CSS selector from LLM",
+                    title_selector=profile.title_selector,
+                    url_selector=profile.url_selector,
+                    error=str(e),
+                )
+                return {
+                    "valid": False,
+                    "reason": f"Invalid CSS selector in title or url: {e}",
+                    "post_count": 0,
+                }
 
             if title_elem and url_elem:
                 url_value = url_elem.get(profile.url_attribute)
