@@ -255,6 +255,7 @@ class Summarize(commands.Cog):
         description="Get an AI summary of any URL (YouTube, Substack, or web page)",
     )
     @app_commands.describe(url="URL to summarize (YouTube video, Substack article, or any webpage)")
+    @app_commands.checks.cooldown(rate=10, per=300.0)
     async def summarize(self, interaction: discord.Interaction, url: str) -> None:
         await interaction.response.defer()
 
@@ -342,6 +343,26 @@ class Summarize(commands.Cog):
             source_type=source_type,
             user_id=interaction.user.id,
         )
+
+    @summarize.error
+    async def summarize_error(
+        self, interaction: discord.Interaction, error: app_commands.AppCommandError
+    ) -> None:
+        if isinstance(error, app_commands.CommandOnCooldown):
+            minutes, seconds = divmod(int(error.retry_after), 60)
+            time_str = f"{minutes}m {seconds}s" if minutes > 0 else f"{seconds}s"
+
+            await interaction.response.send_message(
+                f"You're using this command too frequently. Try again in {time_str}.",
+                ephemeral=True,
+            )
+            logger.debug(
+                "User hit summarize cooldown",
+                user_id=interaction.user.id,
+                retry_after=error.retry_after,
+            )
+        else:
+            raise error
 
 
 async def setup(bot: "IntelStreamBot") -> None:

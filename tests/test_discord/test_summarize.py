@@ -379,3 +379,45 @@ class TestCogLifecycle:
         await cog.cog_unload()
 
         mock_client.aclose.assert_called_once()
+
+
+class TestSummarizeCooldown:
+    async def test_cooldown_error_sends_retry_message(self, summarize_cog, mock_interaction):
+        from discord import app_commands
+
+        mock_interaction.response.send_message = AsyncMock()
+        error = app_commands.CommandOnCooldown(
+            app_commands.Cooldown(rate=10, per=300.0), retry_after=125.5
+        )
+
+        await summarize_cog.summarize_error(mock_interaction, error)
+
+        mock_interaction.response.send_message.assert_called_once()
+        call_args = mock_interaction.response.send_message.call_args
+        assert "too frequently" in call_args[0][0]
+        assert "2m 5s" in call_args[0][0]
+        assert call_args[1]["ephemeral"] is True
+
+    async def test_cooldown_error_shows_seconds_only_for_short_wait(
+        self, summarize_cog, mock_interaction
+    ):
+        from discord import app_commands
+
+        mock_interaction.response.send_message = AsyncMock()
+        error = app_commands.CommandOnCooldown(
+            app_commands.Cooldown(rate=10, per=300.0), retry_after=45.0
+        )
+
+        await summarize_cog.summarize_error(mock_interaction, error)
+
+        call_args = mock_interaction.response.send_message.call_args
+        assert "45s" in call_args[0][0]
+        assert "m " not in call_args[0][0]
+
+    async def test_non_cooldown_error_is_reraised(self, summarize_cog, mock_interaction):
+        from discord import app_commands
+
+        error = app_commands.MissingPermissions(["manage_guild"])
+
+        with pytest.raises(app_commands.MissingPermissions):
+            await summarize_cog.summarize_error(mock_interaction, error)
