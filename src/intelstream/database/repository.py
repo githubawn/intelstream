@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 
 import structlog
-from sqlalchemy import exists, select, text
+from sqlalchemy import exists, func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import (
     AsyncConnection,
@@ -659,3 +659,54 @@ class Repository:
             top_pinged = list(pinged_result.scalars().all())
 
             return top_users, top_pinged
+
+    async def get_content_stats(self, guild_id: str | None = None) -> dict[str, int]:
+        """Get content statistics: total items fetched and total posted."""
+        async with self.session() as session:
+            if guild_id:
+                source_ids_result = await session.execute(
+                    select(Source.id).where(Source.guild_id == guild_id)
+                )
+                source_ids = [row[0] for row in source_ids_result.all()]
+                if not source_ids:
+                    return {"total_fetched": 0, "total_posted": 0}
+
+                total_count = await session.scalar(
+                    select(func.count(ContentItem.id)).where(ContentItem.source_id.in_(source_ids))
+                )
+                posted_count = await session.scalar(
+                    select(func.count(ContentItem.id))
+                    .where(ContentItem.source_id.in_(source_ids))
+                    .where(ContentItem.posted_to_discord == True)  # noqa: E712
+                )
+                return {"total_fetched": total_count or 0, "total_posted": posted_count or 0}
+            else:
+                total_count = await session.scalar(select(func.count(ContentItem.id)))
+                posted_count = await session.scalar(
+                    select(func.count(ContentItem.id)).where(
+                        ContentItem.posted_to_discord == True  # noqa: E712
+                    )
+                )
+                return {"total_fetched": total_count or 0, "total_posted": posted_count or 0}
+
+    async def get_last_posted_content(self, guild_id: str | None = None) -> ContentItem | None:
+        """Get the most recently posted content item."""
+        async with self.session() as session:
+            query = (
+                select(ContentItem)
+                .where(ContentItem.posted_to_discord == True)  # noqa: E712
+                .where(ContentItem.discord_message_id != "backfilled")
+            )
+
+            if guild_id:
+                source_ids_result = await session.execute(
+                    select(Source.id).where(Source.guild_id == guild_id)
+                )
+                source_ids = [row[0] for row in source_ids_result.all()]
+                if not source_ids:
+                    return None
+                query = query.where(ContentItem.source_id.in_(source_ids))
+
+            query = query.order_by(ContentItem.created_at.desc()).limit(1)
+            result = await session.execute(query)
+            return result.scalar_one_or_none()

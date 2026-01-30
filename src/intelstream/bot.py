@@ -1,5 +1,5 @@
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import discord
 import structlog
@@ -8,6 +8,9 @@ from discord.ext import commands
 
 from intelstream.config import Settings, get_database_directory
 from intelstream.database.repository import Repository
+
+if TYPE_CHECKING:
+    from intelstream.database.models import Source
 
 logger = structlog.get_logger(__name__)
 
@@ -194,56 +197,140 @@ class CoreCommands(commands.Cog):
     def __init__(self, bot: IntelStreamBot) -> None:
         self.bot = bot
 
+    def _format_uptime(self) -> str:
+        if not self.bot.start_time:
+            return "Unknown"
+        delta = datetime.now(UTC) - self.bot.start_time
+        hours, remainder = divmod(int(delta.total_seconds()), 3600)
+        minutes, seconds = divmod(remainder, 60)
+        return f"{hours}h {minutes}m {seconds}s"
+
+    def _format_relative_time(self, dt: datetime) -> str:
+        delta = datetime.now(UTC) - dt
+        total_seconds = int(delta.total_seconds())
+
+        if total_seconds < 60:
+            return "just now"
+        elif total_seconds < 3600:
+            mins = total_seconds // 60
+            return f"{mins}m ago"
+        elif total_seconds < 86400:
+            hours = total_seconds // 3600
+            return f"{hours}h ago"
+        else:
+            days = total_seconds // 86400
+            return f"{days}d ago"
+
+    def _get_source_status_icon(self, source: "Source") -> str:
+        from intelstream.database.models import PauseReason
+
+        if source.is_active:
+            if source.consecutive_failures and source.consecutive_failures > 0:
+                return "!"  # Warning - has failures but still active
+            return "+"  # Active and healthy
+        else:
+            if source.pause_reason == PauseReason.CONSECUTIVE_FAILURES.value:
+                return "X"  # Disabled due to failures
+            return "-"  # Paused by user
+
     @app_commands.command(name="status", description="Show bot status and information")
     async def status(self, interaction: discord.Interaction) -> None:
+        guild_id = str(interaction.guild_id) if interaction.guild_id else None
+
         sources = await self.bot.repository.get_all_sources(active_only=False)
         active_sources = [s for s in sources if s.is_active]
+        failing_sources = [
+            s for s in sources if s.consecutive_failures and s.consecutive_failures > 0
+        ]
 
-        uptime = "Unknown"
-        if self.bot.start_time:
-            delta = datetime.now(UTC) - self.bot.start_time
-            hours, remainder = divmod(int(delta.total_seconds()), 3600)
-            minutes, seconds = divmod(remainder, 60)
-            uptime = f"{hours}h {minutes}m {seconds}s"
+        content_stats = await self.bot.repository.get_content_stats(guild_id)
+        last_posted = await self.bot.repository.get_last_posted_content(guild_id)
+
+        forwarding_rules = []
+        if guild_id:
+            forwarding_rules = await self.bot.repository.get_forwarding_rules_for_guild(guild_id)
+        active_rules = [r for r in forwarding_rules if r.is_active]
+
+        default_config = None
+        if guild_id:
+            default_config = await self.bot.repository.get_discord_config(guild_id)
 
         embed = discord.Embed(
             title="IntelStream Status",
-            color=discord.Color.green(),
+            color=discord.Color.green() if not failing_sources else discord.Color.orange(),
             timestamp=datetime.now(UTC),
         )
 
-        embed.add_field(name="Uptime", value=uptime, inline=True)
-        embed.add_field(
-            name="Sources",
-            value=f"{len(active_sources)} active / {len(sources)} total",
-            inline=True,
-        )
-        embed.add_field(
-            name="Latency",
-            value=f"{round(self.bot.latency * 1000)}ms",
-            inline=True,
-        )
+        status_lines = [
+            f"**Uptime:** {self._format_uptime()}",
+            f"**Latency:** {round(self.bot.latency * 1000)}ms",
+            f"**Poll Interval:** {self.bot.settings.content_poll_interval_minutes}m",
+        ]
+        embed.add_field(name="System", value="\n".join(status_lines), inline=True)
+
+        content_lines = [
+            f"**Fetched:** {content_stats['total_fetched']}",
+            f"**Posted:** {content_stats['total_posted']}",
+        ]
+        if last_posted and last_posted.created_at:
+            content_lines.append(
+                f"**Last Post:** {self._format_relative_time(last_posted.created_at)}"
+            )
+        else:
+            content_lines.append("**Last Post:** Never")
+        embed.add_field(name="Content", value="\n".join(content_lines), inline=True)
+
+        source_summary = f"**Active:** {len(active_sources)} / {len(sources)}"
+        if failing_sources:
+            source_summary += f"\n**With Errors:** {len(failing_sources)}"
+        embed.add_field(name="Sources", value=source_summary, inline=True)
 
         if sources:
             source_list = []
-            for source in sources[:10]:
-                status_icon = "+" if source.is_active else "-"
-                last_poll = (
-                    source.last_polled_at.strftime("%Y-%m-%d %H:%M")
-                    if source.last_polled_at
-                    else "Never"
-                )
+            for source in sources[:8]:
+                icon = self._get_source_status_icon(source)
+                channel_mention = f"<#{source.channel_id}>" if source.channel_id else "No channel"
+
+                failure_note = ""
+                if source.consecutive_failures and source.consecutive_failures > 0:
+                    failure_note = f" ({source.consecutive_failures} failures)"
+
                 source_list.append(
-                    f"`{status_icon}` **{source.name}** ({source.type.value}) - Last poll: {last_poll}"
+                    f"`{icon}` **{source.name}** ({source.type.value}) -> {channel_mention}{failure_note}"
                 )
 
-            if len(sources) > 10:
-                source_list.append(f"... and {len(sources) - 10} more")
+            if len(sources) > 8:
+                source_list.append(f"*... and {len(sources) - 8} more*")
 
             embed.add_field(
                 name="Configured Sources",
-                value="\n".join(source_list) if source_list else "No sources configured",
+                value="\n".join(source_list),
                 inline=False,
+            )
+
+        if forwarding_rules:
+            rule_list = []
+            for rule in forwarding_rules[:5]:
+                status = "+" if rule.is_active else "-"
+                forwarded_count = f" ({rule.messages_forwarded or 0} msgs)"
+                rule_list.append(
+                    f"`{status}` <#{rule.source_channel_id}> -> <#{rule.destination_channel_id}>{forwarded_count}"
+                )
+
+            if len(forwarding_rules) > 5:
+                rule_list.append(f"*... and {len(forwarding_rules) - 5} more*")
+
+            embed.add_field(
+                name=f"Forwarding Rules ({len(active_rules)} active)",
+                value="\n".join(rule_list),
+                inline=False,
+            )
+
+        if default_config and default_config.channel_id:
+            embed.add_field(
+                name="Default Output",
+                value=f"<#{default_config.channel_id}>",
+                inline=True,
             )
 
         embed.set_footer(text="IntelStream")
