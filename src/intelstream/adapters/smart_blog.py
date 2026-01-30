@@ -14,13 +14,12 @@ from intelstream.adapters.strategies import (
     RSSDiscoveryStrategy,
     SitemapDiscoveryStrategy,
 )
+from intelstream.config import get_settings
 from intelstream.database.models import Source
 from intelstream.database.repository import Repository
 from intelstream.services.content_extractor import ContentExtractor
 
 logger = structlog.get_logger()
-
-MAX_CONSECUTIVE_FAILURES = 3
 UNKNOWN_DATE = datetime(1970, 1, 1, tzinfo=UTC)
 
 
@@ -117,7 +116,7 @@ class SmartBlogAdapter(BaseAdapter):
 
         if not result or not result.posts:
             failures = await self._repository.increment_failure_count(source.id)
-            if failures >= MAX_CONSECUTIVE_FAILURES:
+            if failures >= get_settings().max_consecutive_failures:
                 logger.info(
                     "Re-analyzing source after consecutive failures",
                     identifier=identifier,

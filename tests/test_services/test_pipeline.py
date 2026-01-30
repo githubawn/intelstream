@@ -16,6 +16,8 @@ def mock_settings():
     settings = MagicMock(spec=Settings)
     settings.youtube_api_key = "test-youtube-key"
     settings.anthropic_api_key = "test-anthropic-key"
+    settings.http_timeout_seconds = 30.0
+    settings.summarization_delay_seconds = 0.5
     settings.fetch_delay_seconds = 0.0
     return settings
 
@@ -96,6 +98,8 @@ class TestContentPipelineInitialization:
         settings = MagicMock(spec=Settings)
         settings.youtube_api_key = None
         settings.anthropic_api_key = "test-anthropic-key"
+        settings.http_timeout_seconds = 30.0
+        settings.summarization_delay_seconds = 0.5
         settings.fetch_delay_seconds = 0.0
 
         pipeline = ContentPipeline(
@@ -296,6 +300,8 @@ class TestFetchAllSources:
         settings = MagicMock(spec=Settings)
         settings.youtube_api_key = "test-key"
         settings.anthropic_api_key = "test-key"
+        settings.http_timeout_seconds = 30.0
+        settings.summarization_delay_seconds = 0.5
         settings.fetch_delay_seconds = 0.1
 
         pipeline = ContentPipeline(

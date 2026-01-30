@@ -61,7 +61,7 @@ def truncate_summary_at_bullet(summary: str, max_length: int) -> str:
                 found_parent = True
                 break
 
-        if not found_parent:
+        if not found_parent and result_lines:
             result_lines = result_lines[:-1]
 
         result = "\n".join(result_lines)

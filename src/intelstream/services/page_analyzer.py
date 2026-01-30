@@ -8,6 +8,7 @@ import anthropic
 import httpx
 import structlog
 from bs4 import BeautifulSoup
+from soupsieve import SelectorSyntaxError
 from tenacity import (
     retry,
     retry_if_exception_type,
@@ -15,10 +16,11 @@ from tenacity import (
     wait_exponential,
 )
 
+from intelstream.config import get_settings
+
 logger = structlog.get_logger()
 
 DEFAULT_MODEL = "claude-sonnet-4-20250514"
-MAX_HTML_LENGTH = 50000
 
 
 @dataclass
@@ -139,7 +141,7 @@ class PageAnalyzer:
             if self._http_client:
                 response = await self._http_client.get(url, headers=headers, follow_redirects=True)
             else:
-                async with httpx.AsyncClient(timeout=30.0) as client:
+                async with httpx.AsyncClient(timeout=get_settings().http_timeout_seconds) as client:
                     response = await client.get(url, headers=headers, follow_redirects=True)
 
             response.raise_for_status()
@@ -166,12 +168,13 @@ class PageAnalyzer:
 
         cleaned = str(soup)
 
-        if len(cleaned) > MAX_HTML_LENGTH:
-            cleaned = cleaned[:MAX_HTML_LENGTH]
+        max_html_length = get_settings().max_html_length
+        if len(cleaned) > max_html_length:
+            cleaned = cleaned[:max_html_length]
             logger.warning(
                 "HTML truncated for analysis",
                 original_length=len(html),
-                truncated_length=MAX_HTML_LENGTH,
+                truncated_length=max_html_length,
             )
 
         return cleaned
@@ -247,7 +250,7 @@ Respond with ONLY a JSON object, no markdown formatting."""
 
         try:
             posts = soup.select(profile.post_selector)
-        except Exception as e:
+        except (SelectorSyntaxError, ValueError) as e:
             logger.warning(
                 "Invalid CSS selector from LLM",
                 selector=profile.post_selector,
@@ -255,7 +258,7 @@ Respond with ONLY a JSON object, no markdown formatting."""
             )
             return {
                 "valid": False,
-                "reason": f"Invalid post selector: {profile.post_selector}",
+                "reason": f"Invalid CSS selector: {profile.post_selector}",
                 "post_count": 0,
             }
 
@@ -271,7 +274,7 @@ Respond with ONLY a JSON object, no markdown formatting."""
             try:
                 title_elem = post.select_one(profile.title_selector)
                 url_elem = post.select_one(profile.url_selector)
-            except Exception as e:
+            except (SelectorSyntaxError, ValueError) as e:
                 logger.warning(
                     "Invalid CSS selector from LLM",
                     title_selector=profile.title_selector,
@@ -280,7 +283,7 @@ Respond with ONLY a JSON object, no markdown formatting."""
                 )
                 return {
                     "valid": False,
-                    "reason": f"Invalid title/url selector: {e}",
+                    "reason": f"Invalid CSS selector in title or url: {e}",
                     "post_count": 0,
                 }
 
