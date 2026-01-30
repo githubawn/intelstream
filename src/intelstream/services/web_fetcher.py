@@ -31,15 +31,15 @@ class WebFetcher:
         self._owns_client = http_client is None
 
     async def fetch(self, url: str) -> WebContent:
-        client = self._client or httpx.AsyncClient(
-            timeout=DEFAULT_TIMEOUT,
-            follow_redirects=True,
-            headers={
-                "User-Agent": "Mozilla/5.0 (compatible; IntelStream/1.0; +https://github.com/intelstream)"
-            },
-        )
-
+        client = None
         try:
+            client = self._client or httpx.AsyncClient(
+                timeout=DEFAULT_TIMEOUT,
+                follow_redirects=True,
+                headers={
+                    "User-Agent": "Mozilla/5.0 (compatible; IntelStream/1.0; +https://github.com/intelstream)"
+                },
+            )
             response = await client.get(url)
             response.raise_for_status()
 
