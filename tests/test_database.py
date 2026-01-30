@@ -5,7 +5,11 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from intelstream.database.exceptions import DuplicateContentError, DuplicateSourceError
+from intelstream.database.exceptions import (
+    DuplicateContentError,
+    DuplicateSourceError,
+    SourceNotFoundError,
+)
 from intelstream.database.models import SourceType
 from intelstream.database.repository import Repository
 
@@ -205,8 +209,9 @@ class TestSourceOperations:
         source = await repository.get_source_by_identifier("to-delete")
         assert source is None
 
-        result = await repository.delete_source("nonexistent")
-        assert result is False
+    async def test_delete_source_not_found(self, repository: Repository) -> None:
+        with pytest.raises(SourceNotFoundError):
+            await repository.delete_source("nonexistent")
 
 
 class TestContentItemOperations:

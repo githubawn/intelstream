@@ -16,3 +16,15 @@ class DuplicateContentError(DatabaseError):
     def __init__(self, external_id: str) -> None:
         self.external_id = external_id
         super().__init__(f"Content with external_id '{external_id}' already exists")
+
+
+class DatabaseConnectionError(DatabaseError):
+    """Raised when a database connection or operational error occurs."""
+
+
+class SourceNotFoundError(DatabaseError):
+    """Raised when a source cannot be found."""
+
+    def __init__(self, identifier: str) -> None:
+        self.identifier = identifier
+        super().__init__(f"Source with identifier '{identifier}' not found")
