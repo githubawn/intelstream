@@ -20,7 +20,7 @@ from intelstream.database.models import (
     SourceType,
 )
 
-logger = structlog.get_logger(__name__)
+logger = structlog.get_logger()
 
 SOURCES_MIGRATIONS: list[tuple[str, str]] = [
     ("discovery_strategy", "VARCHAR(50)"),
