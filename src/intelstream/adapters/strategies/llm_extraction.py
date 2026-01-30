@@ -123,9 +123,9 @@ class LLMExtractionStrategy(DiscoveryStrategy):
 
         if main:
             text = " ".join(main.get_text().split())
-            return hashlib.md5(text.encode()).hexdigest()
+            return hashlib.sha256(text.encode()).hexdigest()
 
-        return hashlib.md5(html.encode()).hexdigest()
+        return hashlib.sha256(html.encode()).hexdigest()
 
     async def _fetch_html(self, url: str) -> str | None:
         headers = {
