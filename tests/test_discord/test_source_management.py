@@ -99,6 +99,14 @@ class TestParseSourceIdentifier:
         with pytest.raises(InvalidSourceURLError, match="cannot be empty"):
             parse_source_identifier(SourceType.ARXIV, "   ")
 
+    def test_parse_page_no_host(self):
+        with pytest.raises(InvalidSourceURLError, match="No host found"):
+            parse_source_identifier(SourceType.PAGE, "not-a-url")
+
+    def test_parse_blog_no_host(self):
+        with pytest.raises(InvalidSourceURLError, match="No host found"):
+            parse_source_identifier(SourceType.BLOG, "not-a-url")
+
 
 class TestSourceManagementAdd:
     async def test_add_source_success(self, source_management, mock_bot):
