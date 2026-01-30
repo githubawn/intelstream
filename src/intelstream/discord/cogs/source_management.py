@@ -57,9 +57,7 @@ def parse_source_identifier(source_type: SourceType, url: str) -> tuple[str, str
                     f"Invalid YouTube URL: {url}. Could not extract channel identifier."
                 )
             return identifier, None
-        raise InvalidSourceURLError(
-            f"Invalid YouTube URL: {url}. Expected youtube.com domain."
-        )
+        raise InvalidSourceURLError(f"Invalid YouTube URL: {url}. Expected youtube.com domain.")
 
     elif source_type == SourceType.RSS:
         if not parsed.netloc:
