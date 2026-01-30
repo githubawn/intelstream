@@ -110,6 +110,14 @@ class Repository:
             result = await session.execute(select(Source).where(Source.id == source_id))
             return result.scalar_one_or_none()
 
+    async def get_sources_by_ids(self, source_ids: set[str]) -> dict[str, Source]:
+        if not source_ids:
+            return {}
+        async with self.session() as session:
+            result = await session.execute(select(Source).where(Source.id.in_(source_ids)))
+            sources = result.scalars().all()
+            return {source.id: source for source in sources}
+
     async def get_source_by_name(self, name: str) -> Source | None:
         async with self.session() as session:
             result = await session.execute(select(Source).where(Source.name == name))
