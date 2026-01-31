@@ -2,7 +2,7 @@ import enum
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -131,6 +131,7 @@ class ForwardingRule(Base):
 
 class SuckBoobsStats(Base):
     __tablename__ = "suck_boobs_stats"
+    __table_args__ = (UniqueConstraint("guild_id", "user_id", name="uq_guild_user"),)
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     guild_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
