@@ -7,15 +7,17 @@ class SSRFError(Exception):
     """Raised when a URL fails SSRF validation."""
 
 
-BLOCKED_HOSTS = frozenset({
-    "localhost",
-    "localhost.",
-    "localhost.localdomain",
-    "127.0.0.1",
-    "::1",
-    "0.0.0.0",
-    "[::1]",
-})
+BLOCKED_HOSTS = frozenset(
+    {
+        "localhost",
+        "localhost.",
+        "localhost.localdomain",
+        "127.0.0.1",
+        "::1",
+        "0.0.0.0",
+        "[::1]",
+    }
+)
 
 
 def _is_private_ip(ip_str: str) -> bool:
@@ -65,9 +67,7 @@ def validate_url_for_ssrf(url: str) -> None:
         for _, _, _, _, sockaddr in resolved_ips:
             ip_str = str(sockaddr[0])
             if _is_private_ip(ip_str):
-                raise SSRFError(
-                    f"URL resolves to a private IP address ({ip_str})"
-                )
+                raise SSRFError(f"URL resolves to a private IP address ({ip_str})")
     except socket.gaierror as e:
         raise SSRFError("Could not resolve hostname") from e
 

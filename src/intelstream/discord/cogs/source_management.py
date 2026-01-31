@@ -158,9 +158,7 @@ class SourceManagement(commands.Cog):
 
         safe, error_msg = is_safe_url(url)
         if not safe:
-            await interaction.followup.send(
-                f"URL not allowed: {error_msg}", ephemeral=True
-            )
+            await interaction.followup.send(f"URL not allowed: {error_msg}", ephemeral=True)
             return
 
         discovery_strategy: str | None = None
