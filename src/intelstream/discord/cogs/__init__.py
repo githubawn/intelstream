@@ -4,4 +4,4 @@ from intelstream.discord.cogs.source_management import SourceManagement
 from intelstream.discord.cogs.suck_boobs import SuckBoobs
 from intelstream.discord.cogs.summarize import Summarize
 
-__all__ = ["SuckBoobs", "ConfigManagement", "ContentPosting", "SourceManagement", "Summarize"]
+__all__ = ["ConfigManagement", "ContentPosting", "SourceManagement", "SuckBoobs", "Summarize"]

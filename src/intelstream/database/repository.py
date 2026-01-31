@@ -636,7 +636,7 @@ class Repository:
 
             await session.commit()
 
-    async def get_blah_leaderboard(
+    async def get_suck_boobs_leaderboard(
         self, guild_id: str, limit: int = 10
     ) -> tuple[list[SuckBoobsStats], list[SuckBoobsStats]]:
         async with self.session() as session:
