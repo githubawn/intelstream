@@ -9,6 +9,11 @@ from discord import app_commands
 from discord.ext import commands
 
 from intelstream.adapters.smart_blog import SmartBlogAdapter
+from intelstream.database.exceptions import (
+    DatabaseConnectionError,
+    DuplicateSourceError,
+    SourceNotFoundError,
+)
 from intelstream.database.models import PauseReason, SourceType
 from intelstream.services.page_analyzer import PageAnalysisError, PageAnalyzer
 from intelstream.utils.url_validation import is_safe_url
@@ -224,18 +229,25 @@ class SourceManagement(commands.Cog):
 
         final_feed_url = discovered_feed_url if discovered_feed_url else feed_url
 
-        source = await self.bot.repository.add_source(
-            source_type=stype,
-            name=name,
-            identifier=identifier,
-            feed_url=final_feed_url,
-            poll_interval_minutes=self.bot.settings.default_poll_interval_minutes,
-            extraction_profile=extraction_profile_json,
-            discovery_strategy=discovery_strategy,
-            url_pattern=discovered_url_pattern,
-            guild_id=str(interaction.guild_id) if interaction.guild_id else None,
-            channel_id=str(interaction.channel_id),
-        )
+        try:
+            source = await self.bot.repository.add_source(
+                source_type=stype,
+                name=name,
+                identifier=identifier,
+                feed_url=final_feed_url,
+                poll_interval_minutes=self.bot.settings.default_poll_interval_minutes,
+                extraction_profile=extraction_profile_json,
+                discovery_strategy=discovery_strategy,
+                url_pattern=discovered_url_pattern,
+                guild_id=str(interaction.guild_id) if interaction.guild_id else None,
+                channel_id=str(interaction.channel_id),
+            )
+        except DuplicateSourceError:
+            await interaction.followup.send(
+                f"A source with identifier `{identifier}` or name **{name}** already exists.",
+                ephemeral=True,
+            )
+            return
 
         logger.info(
             "Source added",
@@ -317,9 +329,8 @@ class SourceManagement(commands.Cog):
             )
             return
 
-        deleted = await self.bot.repository.delete_source(source.identifier)
-
-        if deleted:
+        try:
+            await self.bot.repository.delete_source(source.identifier)
             logger.info(
                 "Source removed",
                 name=name,
@@ -327,8 +338,14 @@ class SourceManagement(commands.Cog):
                 user_id=interaction.user.id,
             )
             await interaction.followup.send(f"Source **{name}** has been removed.", ephemeral=True)
-        else:
-            await interaction.followup.send(f"Failed to remove source **{name}**.", ephemeral=True)
+        except SourceNotFoundError:
+            await interaction.followup.send(
+                f"Source **{name}** was already removed.", ephemeral=True
+            )
+        except DatabaseConnectionError:
+            await interaction.followup.send(
+                f"Failed to remove source **{name}** due to a database error.", ephemeral=True
+            )
 
     @source_group.command(name="toggle", description="Enable or disable a content source")
     @app_commands.default_permissions(manage_guild=True)
@@ -349,11 +366,11 @@ class SourceManagement(commands.Cog):
 
         new_state = not source.is_active
         pause_reason = PauseReason.NONE if new_state else PauseReason.USER_PAUSED
-        updated = await self.bot.repository.set_source_active(
-            source.identifier, new_state, pause_reason=pause_reason
-        )
 
-        if updated:
+        try:
+            await self.bot.repository.set_source_active(
+                source.identifier, new_state, pause_reason=pause_reason
+            )
             status = "enabled" if new_state else "disabled"
             logger.info(
                 "Source toggled",
@@ -363,8 +380,12 @@ class SourceManagement(commands.Cog):
                 user_id=interaction.user.id,
             )
             await interaction.followup.send(f"Source **{name}** has been {status}.", ephemeral=True)
-        else:
-            await interaction.followup.send(f"Failed to toggle source **{name}**.", ephemeral=True)
+        except SourceNotFoundError:
+            await interaction.followup.send(f"Source **{name}** no longer exists.", ephemeral=True)
+        except DatabaseConnectionError:
+            await interaction.followup.send(
+                f"Failed to toggle source **{name}** due to a database error.", ephemeral=True
+            )
 
 
 async def setup(bot: "IntelStreamBot") -> None:
