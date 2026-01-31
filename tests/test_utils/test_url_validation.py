@@ -18,6 +18,26 @@ class TestValidateUrlForSsrf:
         with pytest.raises(SSRFError, match="localhost"):
             validate_url_for_ssrf("http://127.0.0.1/admin")
 
+    def test_rejects_127_0_0_2_loopback_range(self):
+        with pytest.raises(SSRFError, match="private"):
+            validate_url_for_ssrf("http://127.0.0.2/admin")
+
+    def test_rejects_127_255_255_255(self):
+        with pytest.raises(SSRFError, match="private"):
+            validate_url_for_ssrf("http://127.255.255.255/admin")
+
+    def test_rejects_octal_ip(self):
+        with pytest.raises(SSRFError, match="obfuscated"):
+            validate_url_for_ssrf("http://0177.0.0.1/admin")
+
+    def test_rejects_hex_ip(self):
+        with pytest.raises(SSRFError, match="obfuscated"):
+            validate_url_for_ssrf("http://0x7f.0.0.1/admin")
+
+    def test_rejects_decimal_ip(self):
+        with pytest.raises(SSRFError, match="obfuscated"):
+            validate_url_for_ssrf("http://2130706433/admin")
+
     def test_rejects_ipv6_loopback(self):
         with pytest.raises(SSRFError, match="localhost"):
             validate_url_for_ssrf("http://[::1]/admin")

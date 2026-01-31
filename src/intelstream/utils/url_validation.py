@@ -1,4 +1,5 @@
 import ipaddress
+import re
 import socket
 from urllib.parse import urlparse
 
@@ -19,6 +20,33 @@ BLOCKED_HOSTS = frozenset(
     }
 )
 
+OCTAL_IP_PATTERN = re.compile(r"^0[0-7]*(\.[0-7]+){0,3}$")
+HEX_IP_PATTERN = re.compile(r"^0x[0-9a-fA-F]+(\.[0-9a-fA-F]+){0,3}$")
+DECIMAL_IP_PATTERN = re.compile(r"^\d{8,10}$")
+
+
+def _is_obfuscated_ip(hostname: str) -> bool:
+    """
+    Detect obfuscated IP address formats that bypass standard parsing.
+
+    Checks for:
+    - Octal format: 0177.0.0.1 (127.0.0.1)
+    - Hex format: 0x7f.0.0.1 or 0x7f000001 (127.0.0.1)
+    - Decimal format: 2130706433 (127.0.0.1)
+    """
+    if OCTAL_IP_PATTERN.match(hostname):
+        return True
+    if HEX_IP_PATTERN.match(hostname):
+        return True
+    if DECIMAL_IP_PATTERN.match(hostname):
+        try:
+            decimal_val = int(hostname)
+            if 0 <= decimal_val <= 0xFFFFFFFF:
+                return True
+        except ValueError:
+            pass
+    return False
+
 
 def _is_private_ip(ip_str: str) -> bool:
     """Check if an IP address is private, loopback, or link-local."""
@@ -26,7 +54,25 @@ def _is_private_ip(ip_str: str) -> bool:
         ip = ipaddress.ip_address(ip_str)
         return ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved
     except ValueError:
-        return False
+        pass
+
+    if ip_str.startswith("[") and ip_str.endswith("]"):
+        inner = ip_str[1:-1]
+        try:
+            ip = ipaddress.ip_address(inner)
+            return ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved
+        except ValueError:
+            pass
+
+        if inner.lower().startswith("::ffff:"):
+            ipv4_part = inner[7:]
+            try:
+                ip = ipaddress.ip_address(ipv4_part)
+                return ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved
+            except ValueError:
+                pass
+
+    return False
 
 
 def validate_url_for_ssrf(url: str) -> None:
@@ -58,6 +104,9 @@ def validate_url_for_ssrf(url: str) -> None:
 
     if hostname_lower in BLOCKED_HOSTS:
         raise SSRFError("URLs pointing to localhost are not allowed")
+
+    if _is_obfuscated_ip(hostname_lower):
+        raise SSRFError("URLs with obfuscated IP addresses are not allowed")
 
     if _is_private_ip(hostname_lower):
         raise SSRFError("URLs pointing to private IP addresses are not allowed")
