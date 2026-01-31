@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 from typing import TYPE_CHECKING
 
 import structlog
@@ -57,16 +58,18 @@ class ContentPosting(commands.Cog):
         )
 
     async def cog_unload(self) -> None:
-        self.content_loop.cancel()
+        self.content_loop.stop()
 
         task = self.content_loop.get_task()
         if task is not None and not task.done():
-            try:
-                await asyncio.wait_for(task, timeout=5.0)
-            except TimeoutError:
-                logger.warning("Content loop task did not complete within timeout")
-            except asyncio.CancelledError:
-                pass
+            _, pending = await asyncio.wait([task], timeout=5.0)
+
+            if pending:
+                logger.warning("Content loop did not complete gracefully, forcing cancel")
+                self.content_loop.cancel()
+                for t in pending:
+                    with contextlib.suppress(asyncio.CancelledError):
+                        await t
 
         try:
             if self._pipeline:
