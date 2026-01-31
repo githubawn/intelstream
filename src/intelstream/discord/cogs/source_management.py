@@ -322,7 +322,9 @@ class SourceManagement(commands.Cog):
             )
             await interaction.followup.send(f"Source **{name}** has been removed.", ephemeral=True)
         except SourceNotFoundError:
-            await interaction.followup.send(f"Source **{name}** was already removed.", ephemeral=True)
+            await interaction.followup.send(
+                f"Source **{name}** was already removed.", ephemeral=True
+            )
         except DatabaseConnectionError:
             await interaction.followup.send(
                 f"Failed to remove source **{name}** due to a database error.", ephemeral=True
@@ -362,9 +364,7 @@ class SourceManagement(commands.Cog):
             )
             await interaction.followup.send(f"Source **{name}** has been {status}.", ephemeral=True)
         except SourceNotFoundError:
-            await interaction.followup.send(
-                f"Source **{name}** no longer exists.", ephemeral=True
-            )
+            await interaction.followup.send(f"Source **{name}** no longer exists.", ephemeral=True)
         except DatabaseConnectionError:
             await interaction.followup.send(
                 f"Failed to toggle source **{name}** due to a database error.", ephemeral=True
