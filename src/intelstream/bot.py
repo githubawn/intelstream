@@ -186,14 +186,20 @@ class IntelStreamBot(commands.Bot):
     async def close(self) -> None:
         logger.info("Shutting down bot...")
 
-        for cog_name in list(self.cogs.keys()):
-            try:
-                await asyncio.wait_for(self.remove_cog(cog_name), timeout=10.0)
-                logger.debug("Unloaded cog", cog=cog_name)
-            except TimeoutError:
-                logger.error("Cog unload timed out", cog=cog_name)
-            except Exception as e:
-                logger.error("Error unloading cog", cog=cog_name, error=str(e))
+        async def unload_all_cogs() -> None:
+            for cog_name in list(self.cogs.keys()):
+                try:
+                    await asyncio.wait_for(self.remove_cog(cog_name), timeout=10.0)
+                    logger.debug("Unloaded cog", cog=cog_name)
+                except TimeoutError:
+                    logger.error("Cog unload timed out", cog=cog_name)
+                except Exception as e:
+                    logger.error("Error unloading cog", cog=cog_name, error=str(e))
+
+        try:
+            await asyncio.wait_for(unload_all_cogs(), timeout=30.0)
+        except TimeoutError:
+            logger.error("Total cog unload exceeded 30s timeout")
 
         try:
             await asyncio.wait_for(self.repository.close(), timeout=5.0)
