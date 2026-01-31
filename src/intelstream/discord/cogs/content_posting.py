@@ -58,10 +58,15 @@ class ContentPosting(commands.Cog):
 
     async def cog_unload(self) -> None:
         self.content_loop.cancel()
-        for _ in range(30):
-            if not self.content_loop.is_running():
-                break
-            await asyncio.sleep(0.1)
+
+        task = self.content_loop.get_task()
+        if task is not None:
+            try:
+                await asyncio.wait_for(asyncio.shield(task), timeout=5.0)
+            except TimeoutError:
+                logger.warning("Content loop task did not complete within timeout")
+            except asyncio.CancelledError:
+                pass
 
         try:
             if self._pipeline:
