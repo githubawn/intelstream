@@ -101,9 +101,7 @@ class GitHubPoster:
         if len(title) > 256:
             title = title[:253] + "..."
 
-        color = (
-            self.COLORS["issue_closed"] if event.state == "closed" else self.COLORS["issue"]
-        )
+        color = self.COLORS["issue_closed"] if event.state == "closed" else self.COLORS["issue"]
 
         embed = discord.Embed(
             title=title,

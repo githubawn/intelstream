@@ -110,9 +110,7 @@ class GitHubPolling(commands.Cog):
 
         if repo.track_prs:
             try:
-                prs = await self._service.fetch_new_prs(
-                    repo.owner, repo.repo, repo.last_pr_number
-                )
+                prs = await self._service.fetch_new_prs(repo.owner, repo.repo, repo.last_pr_number)
                 events.extend(prs)
             except GitHubAPIError as e:
                 logger.warning(

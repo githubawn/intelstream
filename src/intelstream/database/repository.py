@@ -800,9 +800,7 @@ class Repository:
         last_issue_number: int | None = None,
     ) -> bool:
         async with self.session() as session:
-            result = await session.execute(
-                select(GitHubRepo).where(GitHubRepo.id == repo_id)
-            )
+            result = await session.execute(select(GitHubRepo).where(GitHubRepo.id == repo_id))
             github_repo = result.scalar_one_or_none()
             if github_repo:
                 if last_commit_sha is not None:
@@ -818,9 +816,7 @@ class Repository:
 
     async def increment_github_failure(self, repo_id: str) -> int:
         async with self.session() as session:
-            result = await session.execute(
-                select(GitHubRepo).where(GitHubRepo.id == repo_id)
-            )
+            result = await session.execute(select(GitHubRepo).where(GitHubRepo.id == repo_id))
             github_repo = result.scalar_one_or_none()
             if github_repo:
                 github_repo.consecutive_failures = (github_repo.consecutive_failures or 0) + 1
@@ -830,9 +826,7 @@ class Repository:
 
     async def reset_github_failure(self, repo_id: str) -> bool:
         async with self.session() as session:
-            result = await session.execute(
-                select(GitHubRepo).where(GitHubRepo.id == repo_id)
-            )
+            result = await session.execute(select(GitHubRepo).where(GitHubRepo.id == repo_id))
             github_repo = result.scalar_one_or_none()
             if github_repo:
                 if (github_repo.consecutive_failures or 0) > 0:
@@ -843,9 +837,7 @@ class Repository:
 
     async def set_github_repo_active(self, repo_id: str, is_active: bool) -> bool:
         async with self.session() as session:
-            result = await session.execute(
-                select(GitHubRepo).where(GitHubRepo.id == repo_id)
-            )
+            result = await session.execute(select(GitHubRepo).where(GitHubRepo.id == repo_id))
             github_repo = result.scalar_one_or_none()
             if github_repo:
                 github_repo.is_active = is_active

@@ -28,7 +28,9 @@ class Settings(BaseSettings):
 
     youtube_api_key: str | None = Field(default=None, description="YouTube Data API key (optional)")
 
-    github_token: str | None = Field(default=None, description="GitHub Personal Access Token (optional)")
+    github_token: str | None = Field(
+        default=None, description="GitHub Personal Access Token (optional)"
+    )
 
     github_poll_interval_minutes: int = Field(
         default=5,

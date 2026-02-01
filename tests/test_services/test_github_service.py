@@ -89,13 +89,19 @@ class TestGitHubServiceCommits:
         commits_response = [
             {
                 "sha": "new123",
-                "commit": {"message": "New commit", "author": {"name": "User", "date": "2024-01-15T10:30:00Z"}},
+                "commit": {
+                    "message": "New commit",
+                    "author": {"name": "User", "date": "2024-01-15T10:30:00Z"},
+                },
                 "author": {"login": "user", "avatar_url": ""},
                 "html_url": "https://github.com/owner/repo/commit/new123",
             },
             {
                 "sha": "old456",
-                "commit": {"message": "Old commit", "author": {"name": "User", "date": "2024-01-14T10:30:00Z"}},
+                "commit": {
+                    "message": "Old commit",
+                    "author": {"name": "User", "date": "2024-01-14T10:30:00Z"},
+                },
                 "author": {"login": "user", "avatar_url": ""},
                 "html_url": "https://github.com/owner/repo/commit/old456",
             },

@@ -132,7 +132,11 @@ class GitHubCommands(commands.Cog):
             title="GitHub Repository Added",
             color=discord.Color.green(),
         )
-        embed.add_field(name="Repository", value=f"[{owner}/{repo}](https://github.com/{owner}/{repo})", inline=True)
+        embed.add_field(
+            name="Repository",
+            value=f"[{owner}/{repo}](https://github.com/{owner}/{repo})",
+            inline=True,
+        )
         embed.add_field(name="Channel", value=f"<#{target_channel.id}>", inline=True)
         embed.add_field(name="Tracking", value="Commits, PRs, Issues", inline=False)
 
