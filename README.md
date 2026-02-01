@@ -85,6 +85,18 @@ A Discord bot that monitors content sources and posts AI-generated summaries to 
 | `SUMMARY_MODEL_INTERACTIVE` | `claude-sonnet-4-20250514` | Claude model for interactive `/summarize` command |
 | `DISCORD_MAX_MESSAGE_LENGTH` | `2000` | Maximum Discord message length (500-2000) |
 
+### Advanced Settings
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `HTTP_TIMEOUT_SECONDS` | `30.0` | Timeout for HTTP requests (5-120) |
+| `MAX_HTML_LENGTH` | `50000` | Maximum HTML length for LLM processing (10000-200000) |
+| `SUMMARIZATION_DELAY_SECONDS` | `0.5` | Delay between summarization requests (0.1-5.0) |
+| `MAX_CONSECUTIVE_FAILURES` | `3` | Failures before re-analyzing a source (1-20) |
+| `YOUTUBE_MAX_RESULTS` | `5` | Maximum YouTube videos to fetch per poll (1-50) |
+| `FETCH_DELAY_SECONDS` | `1.0` | Delay between fetching sources (0-30) |
+| `MAX_CONCURRENT_FORWARDS` | `5` | Maximum concurrent message forwards (1-20) |
+
 ## Usage
 
 ### Getting Started
@@ -275,9 +287,10 @@ uv run mypy src/
 ### Continuous Integration
 
 GitHub Actions runs on all pull requests:
-- Ruff linting
+- Ruff linting and formatting checks
 - MyPy type checking
-- Pytest with coverage
+- Pytest with coverage (uploaded to Codecov)
+- Security scanning (pip-audit for dependency vulnerabilities, bandit for code security)
 
 ### Project Structure
 
@@ -306,13 +319,15 @@ src/intelstream/
 │   ├── github.py                # /github commands
 │   └── github_polling.py        # GitHub polling task
 ├── services/
-│   ├── pipeline.py        # Content pipeline orchestration
-│   ├── summarizer.py      # Claude summarization
-│   ├── content_poster.py  # Discord message formatting
+│   ├── pipeline.py           # Content pipeline orchestration
+│   ├── summarizer.py         # Claude summarization
+│   ├── content_poster.py     # Discord message formatting
+│   ├── content_extractor.py  # Content extraction utilities
 │   ├── message_forwarder.py  # Message forwarding logic
-│   ├── web_fetcher.py     # HTTP fetching
-│   ├── github_service.py  # GitHub API client
-│   └── github_poster.py   # GitHub embed formatting
+│   ├── page_analyzer.py      # LLM-based page structure analysis
+│   ├── web_fetcher.py        # HTTP fetching
+│   ├── github_service.py     # GitHub API client
+│   └── github_poster.py      # GitHub embed formatting
 ├── bot.py                 # Discord bot main class
 ├── config.py              # Pydantic settings
 └── main.py                # Entry point
