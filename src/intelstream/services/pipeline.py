@@ -179,7 +179,11 @@ class ContentPipeline:
 
         logger.debug("Fetching source", source_name=source.name)
 
-        items = await adapter.fetch_latest(source.identifier, feed_url=source.feed_url)
+        items = await adapter.fetch_latest(
+            source.identifier,
+            feed_url=source.feed_url,
+            skip_content=source.skip_summary,
+        )
 
         is_first_poll = source.last_polled_at is None
 

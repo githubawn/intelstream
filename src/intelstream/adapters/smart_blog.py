@@ -97,6 +97,7 @@ class SmartBlogAdapter(BaseAdapter):
         self,
         identifier: str,
         feed_url: str | None = None,  # noqa: ARG002
+        skip_content: bool = False,  # noqa: ARG002
     ) -> list[ContentData]:
         source = await self._repository.get_source_by_identifier(identifier)
         if not source:

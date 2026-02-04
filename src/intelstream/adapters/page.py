@@ -33,6 +33,7 @@ class PageAdapter(BaseAdapter):
         self,
         identifier: str,
         feed_url: str | None = None,
+        skip_content: bool = False,  # noqa: ARG002
     ) -> list[ContentData]:
         url = feed_url or identifier
 

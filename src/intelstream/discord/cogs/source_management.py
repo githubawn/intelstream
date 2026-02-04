@@ -112,6 +112,7 @@ class SourceManagement(commands.Cog):
         source_type="Type of source to add",
         name="Display name for this source",
         url="URL of the source (Substack URL, YouTube channel, RSS feed, or blog page)",
+        summarize="Whether to summarize content before posting (default: True)",
     )
     @app_commands.choices(
         source_type=[
@@ -129,6 +130,7 @@ class SourceManagement(commands.Cog):
         source_type: app_commands.Choice[str],
         name: str,
         url: str,
+        summarize: bool = True,
     ) -> None:
         await interaction.response.defer(ephemeral=True)
 
@@ -250,6 +252,7 @@ class SourceManagement(commands.Cog):
                 url_pattern=discovered_url_pattern,
                 guild_id=str(interaction.guild_id) if interaction.guild_id else None,
                 channel_id=str(interaction.channel_id),
+                skip_summary=not summarize,
             )
         except DuplicateSourceError:
             await interaction.followup.send(
@@ -276,6 +279,8 @@ class SourceManagement(commands.Cog):
         embed.add_field(name="Identifier", value=identifier, inline=False)
         if final_feed_url:
             embed.add_field(name="Feed URL", value=final_feed_url, inline=False)
+        if not summarize:
+            embed.add_field(name="Summarize", value="Off", inline=True)
         if discovery_strategy:
             embed.add_field(name="Discovery Strategy", value=discovery_strategy, inline=True)
 

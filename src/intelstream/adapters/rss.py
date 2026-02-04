@@ -21,7 +21,12 @@ class RSSAdapter(BaseAdapter):
     async def get_feed_url(self, identifier: str) -> str:
         return identifier
 
-    async def fetch_latest(self, identifier: str, feed_url: str | None = None) -> list[ContentData]:
+    async def fetch_latest(
+        self,
+        identifier: str,
+        feed_url: str | None = None,
+        skip_content: bool = False,  # noqa: ARG002
+    ) -> list[ContentData]:
         url = feed_url or identifier
 
         logger.debug("Fetching RSS feed", identifier=identifier, url=url)

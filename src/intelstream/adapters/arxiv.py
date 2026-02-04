@@ -33,7 +33,12 @@ class ArxivAdapter(BaseAdapter):
     async def get_feed_url(self, identifier: str) -> str:
         return f"https://arxiv.org/rss/{identifier}"
 
-    async def fetch_latest(self, identifier: str, feed_url: str | None = None) -> list[ContentData]:
+    async def fetch_latest(
+        self,
+        identifier: str,
+        feed_url: str | None = None,
+        skip_content: bool = False,  # noqa: ARG002
+    ) -> list[ContentData]:
         url = feed_url or await self.get_feed_url(identifier)
 
         logger.debug("Fetching arxiv feed", identifier=identifier, url=url)

@@ -42,9 +42,10 @@ class YouTubeAdapter(BaseAdapter):
         self,
         identifier: str,
         feed_url: str | None = None,  # noqa: ARG002
+        skip_content: bool = False,
         max_results: int | None = None,
     ) -> list[ContentData]:
-        logger.debug("Fetching YouTube videos", identifier=identifier)
+        logger.debug("Fetching YouTube videos", identifier=identifier, skip_content=skip_content)
 
         if max_results is None:
             max_results = get_settings().youtube_max_results
@@ -59,7 +60,7 @@ class YouTubeAdapter(BaseAdapter):
             items: list[ContentData] = []
             for video in videos:
                 try:
-                    item = await self._create_content_data(video)
+                    item = await self._create_content_data(video, skip_transcript=skip_content)
                     items.append(item)
                 except Exception as e:
                     logger.warning(
@@ -163,7 +164,9 @@ class YouTubeAdapter(BaseAdapter):
         response: dict[str, Any] = request.execute()
         return list(response.get("items", []))
 
-    async def _create_content_data(self, video: dict[str, Any]) -> ContentData:
+    async def _create_content_data(
+        self, video: dict[str, Any], skip_transcript: bool = False
+    ) -> ContentData:
         snippet: dict[str, Any] = video.get("snippet", {})
         content_details: dict[str, Any] = video.get("contentDetails", {})
 
@@ -183,7 +186,7 @@ class YouTubeAdapter(BaseAdapter):
         thumbnails: dict[str, Any] = snippet.get("thumbnails", {})
         thumbnail_url = self._get_best_thumbnail(thumbnails)
 
-        transcript = await self._fetch_transcript(video_id)
+        transcript = None if skip_transcript else await self._fetch_transcript(video_id)
 
         return ContentData(
             external_id=video_id,

@@ -49,6 +49,7 @@ def sample_source():
     source.type = SourceType.SUBSTACK
     source.identifier = "test-substack"
     source.feed_url = "https://test.substack.com/feed"
+    source.skip_summary = False
     return source
 
 
@@ -316,6 +317,7 @@ class TestFetchAllSources:
         source1.identifier = "source1"
         source1.feed_url = "https://source1.substack.com/feed"
         source1.last_polled_at = None
+        source1.skip_summary = False
 
         source2 = MagicMock(spec=Source)
         source2.id = "source-2"
@@ -324,6 +326,7 @@ class TestFetchAllSources:
         source2.identifier = "source2"
         source2.feed_url = "https://source2.substack.com/feed"
         source2.last_polled_at = None
+        source2.skip_summary = False
 
         mock_repository.get_all_sources.return_value = [source1, source2]
         mock_repository.content_item_exists.return_value = True
@@ -484,6 +487,36 @@ class TestFetchAllSources:
 
         assert result == 1
         mock_repository.reset_failure_count.assert_called_once_with(sample_source.id)
+
+        await pipeline.close()
+
+    async def test_fetch_passes_skip_content_to_adapter(
+        self,
+        pipeline: ContentPipeline,
+        mock_repository: AsyncMock,
+        sample_source,
+        sample_content_data,
+    ):
+        await pipeline.initialize()
+
+        sample_source.skip_summary = True
+
+        mock_repository.get_all_sources.return_value = [sample_source]
+        mock_repository.content_item_exists.return_value = False
+
+        with patch.object(
+            pipeline._adapters[SourceType.SUBSTACK],
+            "fetch_latest",
+            new_callable=AsyncMock,
+            return_value=[sample_content_data],
+        ) as mock_fetch:
+            await pipeline.fetch_all_sources()
+
+        mock_fetch.assert_called_once_with(
+            sample_source.identifier,
+            feed_url=sample_source.feed_url,
+            skip_content=True,
+        )
 
         await pipeline.close()
 

@@ -45,6 +45,7 @@ class Source(Base):
     pause_reason: Mapped[str] = mapped_column(
         String(32), default=PauseReason.NONE.value, server_default="none"
     )
+    skip_summary: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
     last_polled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
     updated_at: Mapped[datetime] = mapped_column(

@@ -21,7 +21,12 @@ class BaseAdapter(ABC):
         pass
 
     @abstractmethod
-    async def fetch_latest(self, identifier: str, feed_url: str | None = None) -> list[ContentData]:
+    async def fetch_latest(
+        self,
+        identifier: str,
+        feed_url: str | None = None,
+        skip_content: bool = False,
+    ) -> list[ContentData]:
         pass
 
     @abstractmethod

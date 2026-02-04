@@ -127,8 +127,12 @@ class ContentPoster:
         content_item: ContentItem,
         source_type: SourceType,
         source_name: str,
+        skip_summary: bool = False,
     ) -> discord.Message:
-        content = self.format_message(content_item, source_type, source_name)
+        if skip_summary and content_item.original_url:
+            content = content_item.original_url
+        else:
+            content = self.format_message(content_item, source_type, source_name)
         message = await channel.send(content=content)
 
         logger.info(
@@ -191,6 +195,7 @@ class ContentPoster:
                     content_item=item,
                     source_type=source.type,
                     source_name=source.name,
+                    skip_summary=source.skip_summary,
                 )
 
                 await self._bot.repository.mark_content_item_posted(
