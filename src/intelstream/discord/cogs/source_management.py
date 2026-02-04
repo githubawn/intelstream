@@ -1,4 +1,5 @@
 import json
+import re
 from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
@@ -22,6 +23,13 @@ if TYPE_CHECKING:
     from intelstream.bot import IntelStreamBot
 
 logger = structlog.get_logger()
+
+
+_TWITTER_USERNAME_RE = re.compile(r"^[A-Za-z0-9_]{1,15}$")
+
+
+def _is_valid_twitter_username(username: str) -> bool:
+    return _TWITTER_USERNAME_RE.match(username) is not None
 
 
 class InvalidSourceURLError(ValueError):
@@ -90,6 +98,20 @@ def parse_source_identifier(source_type: SourceType, url: str) -> tuple[str, str
         identifier = parsed.netloc + parsed.path.rstrip("/")
         return identifier, None
 
+    elif source_type == SourceType.TWITTER:
+        host = parsed.netloc.lower()
+        if host in ("twitter.com", "www.twitter.com", "x.com", "www.x.com"):
+            path = parsed.path.strip("/")
+            username = path.split("/")[0] if path else ""
+            if not username or not _is_valid_twitter_username(username):
+                raise InvalidSourceURLError(
+                    f"Invalid Twitter URL: {url}. Could not extract a valid username."
+                )
+            return username.lower(), None
+        raise InvalidSourceURLError(
+            f"Invalid Twitter URL: {url}. Expected twitter.com or x.com domain."
+        )
+
     return url, None
 
 
@@ -111,7 +133,7 @@ class SourceManagement(commands.Cog):
     @app_commands.describe(
         source_type="Type of source to add",
         name="Display name for this source",
-        url="URL of the source (Substack URL, YouTube channel, RSS feed, or blog page)",
+        url="URL of the source (Substack, YouTube, RSS, Twitter/X account, or blog page)",
         summarize="Whether to summarize content before posting (default: True)",
     )
     @app_commands.choices(
@@ -122,6 +144,7 @@ class SourceManagement(commands.Cog):
             app_commands.Choice(name="Page", value="page"),
             app_commands.Choice(name="Arxiv", value="arxiv"),
             app_commands.Choice(name="Blog", value="blog"),
+            app_commands.Choice(name="Twitter", value="twitter"),
         ]
     )
     async def source_add(
@@ -168,6 +191,13 @@ class SourceManagement(commands.Cog):
         if stype == SourceType.BLOG and not self.bot.settings.anthropic_api_key:
             await interaction.followup.send(
                 "Blog sources are not available. No Anthropic API key configured.",
+                ephemeral=True,
+            )
+            return
+
+        if stype == SourceType.TWITTER and not self.bot.settings.twitter_api_key:
+            await interaction.followup.send(
+                "Twitter sources are not available. No Twitter API key configured.",
                 ephemeral=True,
             )
             return
