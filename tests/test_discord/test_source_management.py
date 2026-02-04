@@ -227,6 +227,76 @@ class TestSourceManagementAdd:
         call_args = interaction.followup.send.call_args
         assert "not available" in call_args[0][0]
 
+    async def test_add_source_with_summarize_false(self, source_management, mock_bot):
+        interaction = MagicMock(spec=discord.Interaction)
+        interaction.response = MagicMock()
+        interaction.response.defer = AsyncMock()
+        interaction.followup = MagicMock()
+        interaction.followup.send = AsyncMock()
+        interaction.user = MagicMock()
+        interaction.user.id = 123
+        interaction.guild_id = 456
+        interaction.channel_id = 789
+
+        source_type_choice = MagicMock()
+        source_type_choice.value = "youtube"
+        source_type_choice.name = "YouTube"
+
+        mock_bot.repository.get_source_by_identifier = AsyncMock(return_value=None)
+        mock_bot.repository.get_source_by_name = AsyncMock(return_value=None)
+
+        mock_source = MagicMock()
+        mock_source.id = "new-source-id"
+        mock_bot.repository.add_source = AsyncMock(return_value=mock_source)
+
+        await source_management.source_add.callback(
+            source_management,
+            interaction,
+            source_type=source_type_choice,
+            name="Notify Channel",
+            url="https://www.youtube.com/@testchannel",
+            summarize=False,
+        )
+
+        mock_bot.repository.add_source.assert_called_once()
+        call_kwargs = mock_bot.repository.add_source.call_args.kwargs
+        assert call_kwargs["skip_summary"] is True
+
+    async def test_add_source_with_summarize_true(self, source_management, mock_bot):
+        interaction = MagicMock(spec=discord.Interaction)
+        interaction.response = MagicMock()
+        interaction.response.defer = AsyncMock()
+        interaction.followup = MagicMock()
+        interaction.followup.send = AsyncMock()
+        interaction.user = MagicMock()
+        interaction.user.id = 123
+        interaction.guild_id = 456
+        interaction.channel_id = 789
+
+        source_type_choice = MagicMock()
+        source_type_choice.value = "substack"
+        source_type_choice.name = "Substack"
+
+        mock_bot.repository.get_source_by_identifier = AsyncMock(return_value=None)
+        mock_bot.repository.get_source_by_name = AsyncMock(return_value=None)
+
+        mock_source = MagicMock()
+        mock_source.id = "new-source-id"
+        mock_bot.repository.add_source = AsyncMock(return_value=mock_source)
+
+        await source_management.source_add.callback(
+            source_management,
+            interaction,
+            source_type=source_type_choice,
+            name="Test Newsletter",
+            url="https://test.substack.com",
+            summarize=True,
+        )
+
+        mock_bot.repository.add_source.assert_called_once()
+        call_kwargs = mock_bot.repository.add_source.call_args.kwargs
+        assert call_kwargs["skip_summary"] is False
+
 
 class TestSourceManagementList:
     async def test_list_sources_empty(self, source_management, mock_bot):

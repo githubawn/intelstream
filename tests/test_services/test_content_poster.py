@@ -191,6 +191,62 @@ class TestContentPosterPostContent:
         assert sample_content_item.title in content
         assert sample_content_item.summary in content
 
+    async def test_post_content_skip_summary_sends_bare_url(
+        self, content_poster, sample_content_item
+    ):
+        mock_channel = MagicMock(spec=discord.TextChannel)
+        mock_message = MagicMock(spec=discord.Message)
+        mock_message.id = 12345
+        mock_channel.send = AsyncMock(return_value=mock_message)
+
+        await content_poster.post_content(
+            channel=mock_channel,
+            content_item=sample_content_item,
+            source_type=SourceType.YOUTUBE,
+            source_name="Test",
+            skip_summary=True,
+        )
+
+        call_kwargs = mock_channel.send.call_args.kwargs
+        assert call_kwargs["content"] == sample_content_item.original_url
+
+    async def test_post_content_skip_summary_no_url_raises(
+        self, content_poster, sample_content_item
+    ):
+        sample_content_item.original_url = None
+        mock_channel = MagicMock(spec=discord.TextChannel)
+
+        with pytest.raises(ValueError, match="No URL available"):
+            await content_poster.post_content(
+                channel=mock_channel,
+                content_item=sample_content_item,
+                source_type=SourceType.YOUTUBE,
+                source_name="Test",
+                skip_summary=True,
+            )
+
+        mock_channel.send.assert_not_called()
+
+    async def test_post_content_skip_summary_false_sends_formatted(
+        self, content_poster, sample_content_item
+    ):
+        mock_channel = MagicMock(spec=discord.TextChannel)
+        mock_message = MagicMock(spec=discord.Message)
+        mock_message.id = 12345
+        mock_channel.send = AsyncMock(return_value=mock_message)
+
+        await content_poster.post_content(
+            channel=mock_channel,
+            content_item=sample_content_item,
+            source_type=SourceType.YOUTUBE,
+            source_name="Test",
+            skip_summary=False,
+        )
+
+        call_kwargs = mock_channel.send.call_args.kwargs
+        assert sample_content_item.title in call_kwargs["content"]
+        assert sample_content_item.summary in call_kwargs["content"]
+
 
 class TestContentPosterPostUnpostedItems:
     async def test_returns_zero_when_no_items(self, content_poster, mock_bot):
@@ -214,6 +270,7 @@ class TestContentPosterPostUnpostedItems:
         mock_source = MagicMock()
         mock_source.type = SourceType.SUBSTACK
         mock_source.name = "Test Source"
+        mock_source.skip_summary = False
         mock_source.guild_id = "123"
         mock_source.channel_id = "456"
         mock_bot.repository.get_sources_by_ids = AsyncMock(
@@ -251,6 +308,7 @@ class TestContentPosterPostUnpostedItems:
         mock_source = MagicMock()
         mock_source.type = SourceType.SUBSTACK
         mock_source.name = "Test Source"
+        mock_source.skip_summary = False
         mock_source.guild_id = None
         mock_source.channel_id = None
         mock_bot.repository.get_sources_by_ids = AsyncMock(
@@ -273,6 +331,7 @@ class TestContentPosterPostUnpostedItems:
         mock_source = MagicMock()
         mock_source.type = SourceType.SUBSTACK
         mock_source.name = "Test Source"
+        mock_source.skip_summary = False
         mock_source.guild_id = "999"
         mock_source.channel_id = "456"
         mock_bot.repository.get_sources_by_ids = AsyncMock(
@@ -295,6 +354,7 @@ class TestContentPosterPostUnpostedItems:
         mock_source = MagicMock()
         mock_source.type = SourceType.SUBSTACK
         mock_source.name = "Test Source"
+        mock_source.skip_summary = False
         mock_source.guild_id = None
         mock_source.channel_id = None
         mock_bot.repository.get_sources_by_ids = AsyncMock(
@@ -317,6 +377,7 @@ class TestContentPosterPostUnpostedItems:
         mock_source = MagicMock()
         mock_source.type = SourceType.SUBSTACK
         mock_source.name = "Test Source"
+        mock_source.skip_summary = False
         mock_source.guild_id = "123"
         mock_source.channel_id = "456"
         mock_bot.repository.get_sources_by_ids = AsyncMock(
@@ -343,6 +404,7 @@ class TestContentPosterPostUnpostedItems:
         mock_source = MagicMock()
         mock_source.type = SourceType.SUBSTACK
         mock_source.name = "Test Source"
+        mock_source.skip_summary = False
         mock_source.guild_id = "123"
         mock_source.channel_id = "456"
         mock_bot.repository.get_sources_by_ids = AsyncMock(

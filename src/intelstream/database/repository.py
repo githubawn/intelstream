@@ -39,6 +39,7 @@ SOURCES_MIGRATIONS: list[tuple[str, str]] = [
     ("guild_id", "VARCHAR(36)"),
     ("channel_id", "VARCHAR(36)"),
     ("pause_reason", "VARCHAR(32) DEFAULT 'none'"),
+    ("skip_summary", "BOOLEAN DEFAULT 0"),
 ]
 
 MIN_POLL_INTERVAL_MINUTES = 1
@@ -104,6 +105,7 @@ class Repository:
         url_pattern: str | None = None,
         guild_id: str | None = None,
         channel_id: str | None = None,
+        skip_summary: bool = False,
     ) -> Source:
         if not MIN_POLL_INTERVAL_MINUTES <= poll_interval_minutes <= MAX_POLL_INTERVAL_MINUTES:
             raise ValueError(
@@ -123,6 +125,7 @@ class Repository:
                 url_pattern=url_pattern,
                 guild_id=guild_id,
                 channel_id=channel_id,
+                skip_summary=skip_summary,
             )
             session.add(source)
             try:

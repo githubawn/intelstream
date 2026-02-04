@@ -250,3 +250,42 @@ class TestYouTubeAdapter:
 
         with pytest.raises(ValueError, match="Could not extract channel ID"):
             await adapter._extract_channel_id_from_url("https://www.youtube.com/watch?v=somevideo")
+
+    async def test_fetch_latest_skip_content_skips_transcript(self) -> None:
+        self.mock_youtube.channels().list().execute.side_effect = [
+            {"items": [{"id": "UCtest123456789012345AB"}]},
+            {
+                "items": [
+                    {"contentDetails": {"relatedPlaylists": {"uploads": "UUtest123456789012345AB"}}}
+                ]
+            },
+        ]
+
+        self.mock_youtube.playlistItems().list().execute.return_value = {
+            "items": [
+                {
+                    "snippet": {
+                        "title": "Test Video",
+                        "channelTitle": "Test Channel",
+                        "publishedAt": "2024-01-15T12:00:00Z",
+                        "resourceId": {"videoId": "video123"},
+                        "thumbnails": {
+                            "high": {"url": "https://img.youtube.com/vi/video123/hq.jpg"}
+                        },
+                    },
+                    "contentDetails": {"videoPublishedAt": "2024-01-15T12:00:00Z"},
+                }
+            ]
+        }
+
+        adapter = YouTubeAdapter(api_key="test-key")
+
+        with patch.object(adapter, "_fetch_transcript") as mock_fetch_transcript:
+            items = await adapter.fetch_latest("@testchannel", skip_content=True)
+
+            mock_fetch_transcript.assert_not_called()
+
+        assert len(items) == 1
+        assert items[0].raw_content is None
+        assert items[0].title == "Test Video"
+        assert items[0].original_url == "https://www.youtube.com/watch?v=video123"

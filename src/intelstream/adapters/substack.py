@@ -26,7 +26,12 @@ class SubstackAdapter(BaseAdapter):
             return identifier
         return f"https://{identifier}.substack.com/feed"
 
-    async def fetch_latest(self, identifier: str, feed_url: str | None = None) -> list[ContentData]:
+    async def fetch_latest(
+        self,
+        identifier: str,
+        feed_url: str | None = None,
+        skip_content: bool = False,  # noqa: ARG002
+    ) -> list[ContentData]:
         url = feed_url or await self.get_feed_url(identifier)
 
         logger.debug("Fetching Substack feed", identifier=identifier, url=url)
