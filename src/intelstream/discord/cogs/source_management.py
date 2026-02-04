@@ -1,4 +1,5 @@
 import json
+import re
 from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
@@ -22,6 +23,13 @@ if TYPE_CHECKING:
     from intelstream.bot import IntelStreamBot
 
 logger = structlog.get_logger()
+
+
+_TWITTER_USERNAME_RE = re.compile(r"^[A-Za-z0-9_]{1,15}$")
+
+
+def _is_valid_twitter_username(username: str) -> bool:
+    return _TWITTER_USERNAME_RE.match(username) is not None
 
 
 class InvalidSourceURLError(ValueError):
@@ -95,9 +103,9 @@ def parse_source_identifier(source_type: SourceType, url: str) -> tuple[str, str
         if host in ("twitter.com", "www.twitter.com", "x.com", "www.x.com"):
             path = parsed.path.strip("/")
             username = path.split("/")[0] if path else ""
-            if not username:
+            if not username or not _is_valid_twitter_username(username):
                 raise InvalidSourceURLError(
-                    f"Invalid Twitter URL: {url}. Could not extract username."
+                    f"Invalid Twitter URL: {url}. Could not extract a valid username."
                 )
             return username.lower(), None
         raise InvalidSourceURLError(

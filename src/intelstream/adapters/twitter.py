@@ -42,7 +42,7 @@ class TwitterAdapter(BaseAdapter):
                 params=params,
             )
         else:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.get(
                     f"{TWITTER_API_BASE}/twitter/user/last_tweets",
                     headers=headers,
@@ -85,7 +85,8 @@ class TwitterAdapter(BaseAdapter):
         url = str(tweet.get("url", f"https://x.com/i/status/{tweet_id}"))
 
         author_data = tweet.get("author") or {}
-        assert isinstance(author_data, dict)
+        if not isinstance(author_data, dict):
+            author_data = {}
         author_name = str(author_data.get("name") or author_data.get("userName", "Unknown"))
         profile_pic = author_data.get("profilePicture")
 

@@ -140,8 +140,12 @@ class TestParseSourceIdentifier:
         assert identifier == "elonmusk"
 
     def test_parse_twitter_no_username(self):
-        with pytest.raises(InvalidSourceURLError, match="Could not extract username"):
+        with pytest.raises(InvalidSourceURLError, match="Could not extract a valid username"):
             parse_source_identifier(SourceType.TWITTER, "https://twitter.com/")
+
+    def test_parse_twitter_invalid_username(self):
+        with pytest.raises(InvalidSourceURLError, match="Could not extract a valid username"):
+            parse_source_identifier(SourceType.TWITTER, "https://x.com/../../admin")
 
     def test_parse_twitter_wrong_domain(self):
         with pytest.raises(InvalidSourceURLError, match=r"Expected twitter\.com or x\.com"):
