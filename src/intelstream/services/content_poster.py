@@ -129,7 +129,16 @@ class ContentPoster:
         source_name: str,
         skip_summary: bool = False,
     ) -> discord.Message:
-        if skip_summary and content_item.original_url:
+        if skip_summary:
+            if not content_item.original_url:
+                logger.warning(
+                    "Skip-summary source has no URL, skipping post",
+                    content_id=content_item.id,
+                    source_name=source_name,
+                )
+                raise ValueError(
+                    f"No URL available for skip-summary content item {content_item.id}"
+                )
             content = content_item.original_url
         else:
             content = self.format_message(content_item, source_type, source_name)

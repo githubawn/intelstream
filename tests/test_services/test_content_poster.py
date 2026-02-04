@@ -210,6 +210,23 @@ class TestContentPosterPostContent:
         call_kwargs = mock_channel.send.call_args.kwargs
         assert call_kwargs["content"] == sample_content_item.original_url
 
+    async def test_post_content_skip_summary_no_url_raises(
+        self, content_poster, sample_content_item
+    ):
+        sample_content_item.original_url = None
+        mock_channel = MagicMock(spec=discord.TextChannel)
+
+        with pytest.raises(ValueError, match="No URL available"):
+            await content_poster.post_content(
+                channel=mock_channel,
+                content_item=sample_content_item,
+                source_type=SourceType.YOUTUBE,
+                source_name="Test",
+                skip_summary=True,
+            )
+
+        mock_channel.send.assert_not_called()
+
     async def test_post_content_skip_summary_false_sends_formatted(
         self, content_poster, sample_content_item
     ):
