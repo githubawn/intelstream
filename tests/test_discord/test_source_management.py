@@ -457,6 +457,133 @@ class TestSourceManagementRemove:
         assert "No source found" in call_args[0][0]
 
 
+class TestSourceManagementInfo:
+    async def test_info_source_not_found(self, source_management, mock_bot):
+        interaction = MagicMock(spec=discord.Interaction)
+        interaction.response = MagicMock()
+        interaction.response.defer = AsyncMock()
+        interaction.followup = MagicMock()
+        interaction.followup.send = AsyncMock()
+
+        mock_bot.repository.get_source_by_name = AsyncMock(return_value=None)
+
+        await source_management.source_info.callback(source_management, interaction, name="Unknown")
+
+        call_args = interaction.followup.send.call_args
+        assert "No source found" in call_args[0][0]
+
+    async def test_info_active_source(self, source_management, mock_bot):
+        interaction = MagicMock(spec=discord.Interaction)
+        interaction.response = MagicMock()
+        interaction.response.defer = AsyncMock()
+        interaction.followup = MagicMock()
+        interaction.followup.send = AsyncMock()
+
+        mock_source = MagicMock()
+        mock_source.name = "Test Source"
+        mock_source.type = SourceType.SUBSTACK
+        mock_source.identifier = "test"
+        mock_source.is_active = True
+        mock_source.feed_url = "https://test.substack.com/feed"
+        mock_source.discovery_strategy = None
+        mock_source.url_pattern = None
+        mock_source.consecutive_failures = 0
+        mock_source.skip_summary = False
+        mock_source.last_polled_at = None
+        mock_bot.repository.get_source_by_name = AsyncMock(return_value=mock_source)
+
+        await source_management.source_info.callback(
+            source_management, interaction, name="Test Source"
+        )
+
+        call_kwargs = interaction.followup.send.call_args.kwargs
+        assert "embed" in call_kwargs
+        embed = call_kwargs["embed"]
+        assert embed.title == "Source: Test Source"
+        field_names = [f.name for f in embed.fields]
+        assert "Type" in field_names
+        assert "Identifier" in field_names
+        assert "Status" in field_names
+        assert "Feed URL" in field_names
+        assert "Failures" in field_names
+        assert "Summarize" in field_names
+        assert "Last Poll" in field_names
+
+        status_field = next(f for f in embed.fields if f.name == "Status")
+        assert status_field.value == "Active"
+
+        summarize_field = next(f for f in embed.fields if f.name == "Summarize")
+        assert summarize_field.value == "On"
+
+    async def test_info_paused_source(self, source_management, mock_bot):
+        interaction = MagicMock(spec=discord.Interaction)
+        interaction.response = MagicMock()
+        interaction.response.defer = AsyncMock()
+        interaction.followup = MagicMock()
+        interaction.followup.send = AsyncMock()
+
+        mock_source = MagicMock()
+        mock_source.name = "Paused Source"
+        mock_source.type = SourceType.RSS
+        mock_source.identifier = "example.com/feed"
+        mock_source.is_active = False
+        mock_source.pause_reason = PauseReason.USER_PAUSED.value
+        mock_source.feed_url = "https://example.com/feed"
+        mock_source.discovery_strategy = None
+        mock_source.url_pattern = None
+        mock_source.consecutive_failures = 0
+        mock_source.skip_summary = True
+        mock_source.last_polled_at = None
+        mock_bot.repository.get_source_by_name = AsyncMock(return_value=mock_source)
+
+        await source_management.source_info.callback(
+            source_management, interaction, name="Paused Source"
+        )
+
+        call_kwargs = interaction.followup.send.call_args.kwargs
+        embed = call_kwargs["embed"]
+        status_field = next(f for f in embed.fields if f.name == "Status")
+        assert status_field.value == "Paused by user"
+
+        summarize_field = next(f for f in embed.fields if f.name == "Summarize")
+        assert summarize_field.value == "Off"
+
+    async def test_info_disabled_by_failures(self, source_management, mock_bot):
+        interaction = MagicMock(spec=discord.Interaction)
+        interaction.response = MagicMock()
+        interaction.response.defer = AsyncMock()
+        interaction.followup = MagicMock()
+        interaction.followup.send = AsyncMock()
+
+        mock_source = MagicMock()
+        mock_source.name = "Failing Source"
+        mock_source.type = SourceType.BLOG
+        mock_source.identifier = "blog.example.com"
+        mock_source.is_active = False
+        mock_source.pause_reason = PauseReason.CONSECUTIVE_FAILURES.value
+        mock_source.feed_url = None
+        mock_source.discovery_strategy = "rss"
+        mock_source.url_pattern = "/posts/*"
+        mock_source.consecutive_failures = 5
+        mock_source.skip_summary = False
+        mock_source.last_polled_at = None
+        mock_bot.repository.get_source_by_name = AsyncMock(return_value=mock_source)
+
+        await source_management.source_info.callback(
+            source_management, interaction, name="Failing Source"
+        )
+
+        call_kwargs = interaction.followup.send.call_args.kwargs
+        embed = call_kwargs["embed"]
+        status_field = next(f for f in embed.fields if f.name == "Status")
+        assert status_field.value == "Disabled (5 failures)"
+
+        field_names = [f.name for f in embed.fields]
+        assert "Discovery Strategy" in field_names
+        assert "URL Pattern" in field_names
+        assert "Feed URL" not in field_names
+
+
 class TestSourceManagementToggle:
     async def test_toggle_source_enable(self, source_management, mock_bot):
         interaction = MagicMock(spec=discord.Interaction)
