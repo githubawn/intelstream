@@ -55,12 +55,18 @@ class GitHubCommands(commands.Cog):
     @app_commands.describe(
         repo_url="GitHub repository URL or owner/repo format",
         channel="Channel or thread for updates (defaults to current)",
+        track_commits="Track new commits (default: True)",
+        track_prs="Track pull requests (default: True)",
+        track_issues="Track issues (default: True)",
     )
     async def github_add(
         self,
         interaction: discord.Interaction,
         repo_url: str,
         channel: discord.TextChannel | discord.Thread | None = None,
+        track_commits: bool = True,
+        track_prs: bool = True,
+        track_issues: bool = True,
     ) -> None:
         await interaction.response.defer(ephemeral=True)
 
@@ -121,6 +127,9 @@ class GitHubCommands(commands.Cog):
             channel_id=str(target_channel.id),
             owner=owner,
             repo=repo,
+            track_commits=track_commits,
+            track_prs=track_prs,
+            track_issues=track_issues,
         )
 
         logger.info(
@@ -142,7 +151,14 @@ class GitHubCommands(commands.Cog):
             inline=True,
         )
         embed.add_field(name="Channel", value=f"<#{target_channel.id}>", inline=True)
-        embed.add_field(name="Tracking", value="Commits, PRs, Issues", inline=False)
+        tracking = []
+        if track_commits:
+            tracking.append("Commits")
+        if track_prs:
+            tracking.append("PRs")
+        if track_issues:
+            tracking.append("Issues")
+        embed.add_field(name="Tracking", value=", ".join(tracking) or "None", inline=False)
 
         await interaction.followup.send(embed=embed, ephemeral=True)
 
@@ -252,6 +268,56 @@ class GitHubCommands(commands.Cog):
                 f"Repository `{owner}/{repo_name}` is not being monitored in this server.",
                 ephemeral=True,
             )
+
+    @github_group.command(name="toggle", description="Enable or disable GitHub repo monitoring")
+    @app_commands.default_permissions(manage_guild=True)
+    @app_commands.describe(repo="Repository name (owner/repo format)")
+    async def github_toggle(
+        self,
+        interaction: discord.Interaction,
+        repo: str,
+    ) -> None:
+        await interaction.response.defer(ephemeral=True)
+
+        parsed = parse_github_url(repo)
+        if not parsed:
+            await interaction.followup.send(
+                "Invalid repository format. Use `owner/repo` format.",
+                ephemeral=True,
+            )
+            return
+
+        owner, repo_name = parsed
+
+        guild_id = str(interaction.guild_id) if interaction.guild_id else None
+        if not guild_id:
+            await interaction.followup.send(
+                "This command can only be used in a server.", ephemeral=True
+            )
+            return
+
+        github_repo = await self.bot.repository.get_github_repo(guild_id, owner, repo_name)
+        if not github_repo:
+            await interaction.followup.send(
+                f"Repository `{owner}/{repo_name}` is not being monitored in this server.",
+                ephemeral=True,
+            )
+            return
+
+        new_state = not github_repo.is_active
+        await self.bot.repository.set_github_repo_active(github_repo.id, new_state)
+
+        status = "enabled" if new_state else "disabled"
+        logger.info(
+            "GitHub repo toggled",
+            owner=owner,
+            repo=repo_name,
+            is_active=new_state,
+            user_id=interaction.user.id,
+        )
+        await interaction.followup.send(
+            f"Monitoring for `{owner}/{repo_name}` has been {status}.", ephemeral=True
+        )
 
 
 async def setup(bot: "IntelStreamBot") -> None:
