@@ -15,6 +15,8 @@ SOURCE_TYPE_LABELS: dict[SourceType, str] = {
     SourceType.YOUTUBE: "YouTube",
     SourceType.RSS: "RSS",
     SourceType.PAGE: "Web",
+    SourceType.ARXIV: "ArXiv",
+    SourceType.BLOG: "Blog",
     SourceType.TWITTER: "Twitter",
 }
 
@@ -124,7 +126,7 @@ class ContentPoster:
 
     async def post_content(
         self,
-        channel: discord.TextChannel,
+        channel: discord.TextChannel | discord.Thread,
         content_item: ContentItem,
         source_type: SourceType,
         source_name: str,
@@ -192,7 +194,9 @@ class ContentPoster:
                     channel_id = source.channel_id
 
                 channel = self._bot.get_channel(int(channel_id))
-                if channel is None or not isinstance(channel, discord.TextChannel):
+                if channel is None or not isinstance(
+                    channel, (discord.TextChannel, discord.Thread)
+                ):
                     logger.warning(
                         "Could not find channel for source",
                         source_id=source.id,
