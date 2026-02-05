@@ -293,13 +293,14 @@ class Repository:
             )
             return result.scalar_one()
 
-    async def get_unposted_content_items(self) -> list[ContentItem]:
+    async def get_unposted_content_items(self, limit: int = 10) -> list[ContentItem]:
         async with self.session() as session:
             result = await session.execute(
                 select(ContentItem)
                 .where(ContentItem.posted_to_discord == False)  # noqa: E712
                 .where(ContentItem.summary.isnot(None))
                 .order_by(ContentItem.published_at.asc())
+                .limit(limit)
             )
             return list(result.scalars().all())
 
