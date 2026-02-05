@@ -410,6 +410,55 @@ class SourceManagement(commands.Cog):
                 f"Failed to remove source **{name}** due to a database error.", ephemeral=True
             )
 
+    @source_group.command(name="info", description="Show detailed info about a source")
+    @app_commands.describe(name="Name of the source to inspect")
+    async def source_info(
+        self,
+        interaction: discord.Interaction,
+        name: str,
+    ) -> None:
+        await interaction.response.defer(ephemeral=True)
+
+        source = await self.bot.repository.get_source_by_name(name)
+        if not source:
+            await interaction.followup.send(
+                f"No source found with name **{name}**.", ephemeral=True
+            )
+            return
+
+        embed = discord.Embed(title=f"Source: {source.name}", color=discord.Color.blue())
+        embed.add_field(name="Type", value=source.type.value, inline=True)
+        embed.add_field(name="Identifier", value=source.identifier, inline=True)
+
+        if source.is_active:
+            status = "Active"
+        elif source.pause_reason == PauseReason.USER_PAUSED.value:
+            status = "Paused by user"
+        elif source.pause_reason == PauseReason.CONSECUTIVE_FAILURES.value:
+            status = f"Disabled ({source.consecutive_failures} failures)"
+        else:
+            status = "Paused"
+        embed.add_field(name="Status", value=status, inline=True)
+
+        if source.feed_url:
+            embed.add_field(name="Feed URL", value=source.feed_url, inline=False)
+        if source.discovery_strategy:
+            embed.add_field(name="Discovery Strategy", value=source.discovery_strategy, inline=True)
+        if source.url_pattern:
+            embed.add_field(name="URL Pattern", value=source.url_pattern, inline=True)
+
+        embed.add_field(name="Failures", value=str(source.consecutive_failures), inline=True)
+        embed.add_field(name="Summarize", value="Off" if source.skip_summary else "On", inline=True)
+
+        last_poll = (
+            source.last_polled_at.strftime("%Y-%m-%d %H:%M UTC")
+            if source.last_polled_at
+            else "Never"
+        )
+        embed.add_field(name="Last Poll", value=last_poll, inline=True)
+
+        await interaction.followup.send(embed=embed, ephemeral=True)
+
     @source_group.command(name="toggle", description="Enable or disable a content source")
     @app_commands.default_permissions(manage_guild=True)
     @app_commands.describe(name="Name of the source to toggle")
