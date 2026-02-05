@@ -226,10 +226,13 @@ class TestConfigManagementShow:
 
         source1 = MagicMock()
         source1.is_active = True
+        source1.guild_id = "456"
         source2 = MagicMock()
         source2.is_active = False
+        source2.guild_id = "456"
         source3 = MagicMock()
         source3.is_active = True
+        source3.guild_id = "456"
         mock_bot.repository.get_all_sources = AsyncMock(return_value=[source1, source2, source3])
 
         await config_management.config_show.callback(config_management, interaction)

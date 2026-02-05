@@ -123,11 +123,12 @@ class ConfigManagement(commands.Cog):
             )
 
         sources = await self.bot.repository.get_all_sources(active_only=False)
-        active_count = sum(1 for s in sources if s.is_active)
+        guild_sources = [s for s in sources if s.guild_id == str(interaction.guild.id)]
+        active_count = sum(1 for s in guild_sources if s.is_active)
 
         embed.add_field(
             name="Sources",
-            value=f"{active_count} active / {len(sources)} total",
+            value=f"{active_count} active / {len(guild_sources)} total",
             inline=True,
         )
 
